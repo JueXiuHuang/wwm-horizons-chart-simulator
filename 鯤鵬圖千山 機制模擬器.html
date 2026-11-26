@@ -1,0 +1,1781 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>鯤鵬圖千山 機制模擬器</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap">
+<style>
+/* Layout: mechanic index on the left, the 3D arena as the working surface, the how-to sheet beside it on wide screens. */
+:root {
+  --ink: #0f1417; --panel: #161e23; --panel2: #1d272d; --line: #2b3a42; --fg: #ebe6d9; --muted: #9aa8ae;
+  --gold: #e5b450; --red: #f06a62; --jade: #4cc79f; --sky: #6fd6e6; --focus: #f2c14e;
+  --hud-bg: rgba(9, 13, 15, .74); --hud-fg: #f3efe4; --hud-muted: #b9c4c8; --hud-gold: #f2c14e; --hud-red: #ff6b63; --hud-jade: #58d6a7; --hud-line: rgba(255,255,255,.14);
+  --f-display: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  --f-body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  --f-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --ink: #eef2f0; --panel: #ffffff; --panel2: #f3f6f5; --line: #d3dcd9; --fg: #172025; --muted: #55646a; --gold: #8f6310; --red: #b9342f; --jade: #1d7f63; --sky: #147a8c; --focus: #8f6310; color-scheme: light; }
+}
+:root[data-theme="light"] { --ink: #eef2f0; --panel: #ffffff; --panel2: #f3f6f5; --line: #d3dcd9; --fg: #172025; --muted: #55646a; --gold: #8f6310; --red: #b9342f; --jade: #1d7f63; --sky: #147a8c; --focus: #8f6310; color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+[hidden] { display: none !important; }
+body { background: var(--ink); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1560px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; }
+button, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin-bottom: 16px; }
+header.top h1 { font-family: var(--f-display); font-weight: 900; font-size: clamp(26px, 3.2vw, 36px); letter-spacing: .06em; margin: 0; line-height: 1.2; text-wrap: balance; }
+header.top h1 small { font-size: .55em; font-weight: 600; color: var(--gold); letter-spacing: .12em; margin-left: .4em; }
+header.top p { margin: 0; color: var(--muted); font-size: 13px; }
+
+.layout { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1300px) { .layout { grid-template-columns: 236px minmax(0, 1fr) 380px; } }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } .index { display: none; } }
+
+.index { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); max-height: calc(100vh - 32px); overflow: auto; }
+.index h2 { font-family: var(--f-display); font-size: 15px; margin: 10px 8px 4px; letter-spacing: .08em; }
+.index h2 span { display: block; font-family: var(--f-body); font-size: 11px; color: var(--muted); letter-spacing: .04em; font-weight: 500; }
+.index p.rule { font-size: 12px; color: var(--muted); margin: 0 8px 6px; line-height: 1.5; }
+.index ol { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
+.index button { width: 100%; text-align: left; background: none; border: 0; border-radius: 7px; padding: 6px 8px; cursor: pointer; display: grid; grid-template-columns: 22px 1fr; column-gap: 6px; }
+.index button:hover { background: var(--panel2); }
+.index button[aria-current="true"] { background: var(--panel2); box-shadow: inset 2px 0 0 var(--gold); }
+.index .n { font-family: var(--f-mono); font-size: 11px; color: var(--muted); padding-top: 3px; font-variant-numeric: tabular-nums; }
+.index .zh { font-weight: 700; font-size: 14px; line-height: 1.35; }
+.index .en { grid-column: 2; font-size: 11px; color: var(--muted); line-height: 1.3; }
+
+.picker { display: none; margin-bottom: 12px; }
+.picker label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.picker select { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+@media (max-width: 900px) { .picker { display: block; } }
+
+.main { min-width: 0; display: grid; gap: 10px; }
+.titlebar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.titlebar .eyebrow { width: 100%; font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.titlebar h2 { margin: 0; font-family: var(--f-display); font-size: clamp(24px, 3vw, 32px); font-weight: 900; letter-spacing: .05em; line-height: 1.25; text-wrap: balance; }
+.titlebar .en { font-size: 15px; color: var(--gold); font-weight: 500; }
+
+.stage { position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: max(380px, calc(100vh - 150px)); border-radius: 12px; overflow: hidden; background: #0b1012; border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; }
+.stage canvas { display: block; width: 100%; height: 100%; }
+@media (max-width: 640px) { .stage { aspect-ratio: 1 / 1.05; } }
+
+.hud { position: absolute; color: var(--hud-fg); font-size: 13px; pointer-events: none; }
+.cast { top: 10px; left: 50%; transform: translateX(-50%); width: min(340px, 44%); background: var(--hud-bg); border: 1px solid var(--hud-line); border-radius: 8px; padding: 6px 10px 8px; text-align: center; }
+.cast b { font-family: var(--f-display); font-size: 16px; letter-spacing: .08em; }
+.cast span { display: block; font-size: 11px; color: var(--hud-muted); margin-top: -2px; }
+.track { position: relative; height: 8px; border-radius: 4px; background: rgba(255,255,255,.12); margin-top: 5px; overflow: hidden; }
+.track i { position: absolute; inset: 0 auto 0 0; background: var(--hud-gold); border-radius: 4px; }
+.track s { position: absolute; inset: 0 0 0 auto; background: rgba(88,214,167,.55); border-left: 1px solid var(--hud-jade); }
+.bars { top: 10px; left: 10px; display: grid; gap: 6px; width: min(170px, 26%); }
+.bar { background: var(--hud-bg); border: 1px solid var(--hud-line); border-radius: 7px; padding: 4px 8px 6px; }
+.bar header { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--hud-muted); }
+.bar header b { color: var(--hud-fg); font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-weight: 500; }
+.bar .track { margin-top: 3px; height: 6px; }
+.modetag { top: 10px; right: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.modetag .tag { background: var(--hud-bg); border: 1px solid var(--hud-line); border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700; }
+.modetag .tag.play { color: var(--hud-gold); border-color: rgba(242,193,78,.5); }
+.modetag .clock { font-family: var(--f-mono); font-size: 12px; color: var(--hud-muted); font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 160px; }
+.chips span { background: var(--hud-bg); border: 1px solid var(--hud-line); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+.chips .zap { color: #8eeaf5; border-color: rgba(111,214,230,.5); }
+.chips .warn { color: var(--hud-red); border-color: rgba(255,107,99,.5); }
+.caption { left: 50%; bottom: 12px; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); background: var(--hud-bg); border: 1px solid var(--hud-line); border-radius: 10px; padding: 8px 12px; }
+.caption p { margin: 0; }
+.caption .say { font-weight: 700; font-size: 15px; }
+.caption .tip { color: var(--hud-gold); font-size: 13px; }
+.toast { left: 50%; top: 42%; transform: translateX(-50%); background: rgba(9,13,15,.86); border: 1px solid var(--hud-line); border-radius: 8px; padding: 6px 14px; font-weight: 700; white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+.result { inset: 0; display: grid; place-items: center; background: rgba(6,9,11,.58); pointer-events: auto; padding: 16px; }
+.result .card { background: rgba(14,19,22,.95); border: 1px solid var(--hud-line); border-radius: 12px; padding: 18px 20px; max-width: 440px; text-align: center; }
+.result h3 { margin: 0 0 4px; font-family: var(--f-display); font-size: 26px; letter-spacing: .1em; }
+.result h3.ok { color: var(--hud-jade); }
+.result h3.bad { color: var(--hud-red); }
+.result p { margin: 0 0 14px; color: var(--hud-fg); }
+.result .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.hbtn { background: rgba(255,255,255,.08); border: 1px solid var(--hud-line); color: var(--hud-fg); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.hbtn:hover { background: rgba(255,255,255,.16); }
+.hbtn.primary { background: var(--hud-gold); color: #1b1404; border-color: var(--hud-gold); font-weight: 700; }
+.touch { right: 10px; bottom: 74px; display: grid; gap: 8px; pointer-events: auto; }
+.touch button { width: 58px; height: 58px; border-radius: 50%; background: rgba(9,13,15,.7); border: 1px solid rgba(255,255,255,.28); color: var(--hud-fg); font-weight: 700; font-size: 15px; touch-action: manipulation; }
+.touch button:active { background: rgba(242,193,78,.4); }
+@media (max-width: 640px) {
+  .bars { width: 40%; } .cast { width: 52%; left: auto; right: 10px; transform: none; top: 44px; }
+  .caption { bottom: 8px; padding: 6px 10px; } .caption .say { font-size: 13px; } .caption .tip { font-size: 12px; }
+  .touch { bottom: 96px; } .touch button { width: 50px; height: 50px; }
+}
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
+.btn:hover { background: var(--panel2); }
+.btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); box-shadow: inset 0 -2px 0 var(--gold); }
+.controls .spacer { flex: 1; }
+.controls label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.controls select { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.keys { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; background: var(--panel); color: var(--fg); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+@media (min-width: 1300px) { .sheet { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
+@media (max-width: 1299px) { .sheet { grid-column: 1 / -1; } }
+@media (min-width: 901px) and (max-width: 1299px) { .sheet { grid-column: 2; } }
+.sheet .brief { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
+.sheet h3 { font-size: 12px; letter-spacing: .12em; color: var(--muted); margin: 14px 0 6px; font-weight: 700; }
+.sheet ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.sheet ol li::marker { color: var(--gold); font-weight: 700; font-family: var(--f-mono); }
+.sheet .fail { border-left: 3px solid var(--red); padding: 2px 0 2px 10px; margin: 0; }
+.sheet .task { border-left: 3px solid var(--gold); padding: 2px 0 2px 10px; margin: 0; }
+.sheet .src { font-size: 12px; color: var(--muted); margin: 16px 0 0; }
+.sheet a { color: var(--sky); }
+.keymap { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.keymap header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.keymap h3 { margin: 0; font-size: 15px; }
+.kstatus { margin: 6px 0 10px; font-size: 13px; color: var(--muted); min-height: 1.6em; }
+.kstatus.note { color: var(--gold); }
+.kgrid { display: grid; grid-template-columns: minmax(0, 1fr) 112px 112px; gap: 6px 8px; align-items: center; }
+.kgrid .h { font-size: 11px; color: var(--muted); letter-spacing: .08em; }
+.kbtn { font-family: var(--f-mono); font-size: 13px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 7px; background: var(--panel2); padding: 5px 8px; cursor: pointer; }
+.kbtn.empty { color: var(--muted); }
+.kbtn[data-capturing="true"] { border-color: var(--gold); color: var(--gold); font-family: var(--f-body); }
+.btn.small { padding: 4px 10px; font-size: 13px; font-weight: 500; }
+@media (max-width: 480px) { .kgrid { grid-template-columns: minmax(0, 1fr) 84px 84px; } }
+.foot { font-size: 12px; color: var(--muted); margin-top: 18px; max-width: 72ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>鯤鵬圖千山<small>機制模擬器</small></h1>
+    <p>燕雲十六聲 · 十人俠境 Horizon's Chart · 依 SoMi 與 xKale 的攻略影片整理</p>
+  </header>
+
+  <div class="layout">
+    <nav class="index" id="index" aria-label="機制列表"></nav>
+
+    <div class="main">
+      <div class="picker"><label for="msel">選擇機制</label><select id="msel"></select></div>
+      <div class="titlebar">
+        <span class="eyebrow" id="tEyebrow"></span>
+        <h2 id="tZh"></h2><span class="en" id="tEn"></span>
+      </div>
+
+      <div class="stage" id="stage" tabindex="0" aria-label="副本模擬畫面">
+        <div class="hud cast" id="cast" hidden><b id="castZh"></b><span id="castEn"></span><div class="track"><i id="castFill"></i><s id="castZone" hidden></s></div></div>
+        <div class="hud bars" id="bars"></div>
+        <div class="hud modetag"><span class="tag" id="modeTag">示範</span><span class="clock" id="clock">0.0 秒</span><div class="chips" id="chips"></div></div>
+        <div class="hud caption" id="caption" hidden><p class="say" id="capSay"></p><p class="tip" id="capTip"></p></div>
+        <div class="hud toast" id="toast" hidden></div>
+        <div class="hud touch" id="touch" hidden>
+          <button type="button" data-a="interact" aria-label="互動">互動</button>
+          <button type="button" data-a="jump" aria-label="跳">跳</button>
+          <button type="button" data-a="deflect" aria-label="卸勢">卸勢</button>
+        </div>
+        <div class="hud result" id="result" hidden>
+          <div class="card">
+            <h3 id="resTitle"></h3>
+            <p id="resText"></p>
+            <div class="btns">
+              <button type="button" class="hbtn primary" id="resRetry">再試一次</button>
+              <button type="button" class="hbtn" id="resDemo">看示範</button>
+              <button type="button" class="hbtn" id="resPlay">實際操作</button>
+              <button type="button" class="hbtn" id="resNext">下一個機制</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button type="button" class="btn" id="bDemo" aria-pressed="true">看示範</button>
+        <button type="button" class="btn" id="bPlay" aria-pressed="false">實際操作</button>
+        <button type="button" class="btn" id="bRestart">重來</button>
+        <button type="button" class="btn" id="bPause">暫停</button>
+        <button type="button" class="btn" id="bKeys" aria-expanded="false" aria-controls="keymap">鍵位設定</button>
+        <span class="spacer"></span>
+        <label for="speed">速度
+          <select id="speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option></select>
+        </label>
+      </div>
+      <div class="keys" id="keyHint"></div>
+      <section class="keymap" id="keymap" hidden aria-label="鍵位設定">
+        <header><h3>鍵位設定</h3><button type="button" class="btn small" id="kReset">恢復預設</button></header>
+        <p class="kstatus" id="kStatus"></p>
+        <div class="kgrid" id="kGrid"></div>
+      </section>
+      <div class="legend">
+        <span><i style="background:#f2c14e"></i>你（腳下金環）</span>
+        <span><i style="background:#5b8def"></i>坦</span>
+        <span><i style="background:#e07a5f"></i>近戰</span>
+        <span><i style="background:#b197fc"></i>遠程</span>
+        <span><i style="background:#63d297"></i>補師</span>
+        <span>金圈／紅圈：攻擊範圍，填滿時命中</span>
+        <span>綠圈：已完成或補師範圍</span>
+      </div>
+    </div>
+
+    <aside class="sheet" id="sheet">
+      <p class="brief" id="sBrief"></p>
+      <h3>如何處理</h3>
+      <ol id="sSteps"></ol>
+      <h3>失敗後果</h3>
+      <p class="fail" id="sFail"></p>
+      <h3>實際操作時你的任務</h3>
+      <p class="task" id="sTask"></p>
+      <p class="src" id="sSrc"></p>
+    </aside>
+  </div>
+  <p class="foot">英文招式名稱取自 SoMi 影片的英文字幕，可能和遊戲官方英文版不同。模擬器只保留處理機制需要的規則，數值與時間都是簡化過的。</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*SIM-START*/
+const SIM = (() => {
+'use strict';
+const AR = 19.5, SPEED = 6, U_MAX = 9, U_ACC = 18, JUMP_V = 11, GRAV = 20, TETHER_MAX = 18, DEFLECT_WIN = 0.7;
+
+const v = (x, z) => ({ x, z });
+const add = (a, b) => v(a.x + b.x, a.z + b.z);
+const sub = (a, b) => v(a.x - b.x, a.z - b.z);
+const mul = (a, k) => v(a.x * k, a.z * k);
+const dot = (a, b) => a.x * b.x + a.z * b.z;
+const len = a => Math.hypot(a.x, a.z);
+const norm = a => { const l = len(a); return l > 1e-6 ? v(a.x / l, a.z / l) : v(0, 0); };
+const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const perp = a => v(-a.z, a.x);
+const cp = a => v(a.x, a.z);
+const clamp01 = x => Math.max(0, Math.min(1, x));
+function polar(r, deg) { const a = deg * Math.PI / 180; return v(r * Math.cos(a), -r * Math.sin(a)); }
+function angOf(p) { return Math.atan2(-p.z, p.x) * 180 / Math.PI; }
+function segInfo(p, a, b) {
+  const ab = sub(b, a), L2 = dot(ab, ab);
+  const t = L2 ? clamp01(dot(sub(p, a), ab) / L2) : 0;
+  return { d: dist(p, add(a, mul(ab, t))), t };
+}
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+const ROLE = ['you', 'tank', 'melee', 'melee', 'melee', 'ranged', 'ranged', 'melee', 'healer', 'healer'];
+const MECHS = [];
+const def = m => MECHS.push(m);
+
+function create(mech, mode, seed) {
+  const w = {
+    mech, mode, seed, t: 0, rnd: mulberry32(seed || 1),
+    players: [], umbrellas: [], tgs: [], orbs: [], cages: [], swords: [], fields: [], markers: [], fx: [], tethers: [],
+    dome: null, vortex: null, clone: null, arena: mech.phase === 1 ? 'wayfarer' : 'peng',
+    boss: { pos: v(0, 0), shield: 0, name: mech.phase === 1 ? '天涯客' : '鵬' },
+    cast: null, caption: null, bars: [], msg: null, queue: [], result: null, f: {}, uid: 1,
+  };
+  for (let i = 1; i <= 10; i++) w.players.push({
+    id: i, role: ROLE[i - 1], you: i === 1, ai: !(i === 1 && mode === 'play'),
+    pos: v(0, 0), home: v(0, 0), y: 0, vy: 0, alive: true, hp: 100, riding: null, electrified: false, orb: null,
+    exhausted: false, goal: null, ram: false, move: null, steer: null, kb: null, deflectT: -99, hits: 0, cage: null, st: {}, death: '',
+  });
+  if (mech.phase === 2) w.orbs = [90, 210, 330].map(a => ({ pos: polar(15, a), holder: null }));
+  mech.setup(w);
+  return w;
+}
+
+function at(w, t, fn) { w.queue.push({ t, fn }); w.queue.sort((a, b) => a.t - b.t); }
+function say(w, text, tip) { w.caption = { text, tip: tip || '', t: w.t }; }
+function note(w, text) { w.msg = { text, t: w.t }; }
+function cast(w, zh, en, t0, t1, deflect) { w.cast = { zh, en, t0, t1, deflect: !!deflect, prog: null }; }
+function fail(w, text) { if (!w.result) w.result = { ok: false, text, t: w.t }; }
+function win(w, text) { if (!w.result) w.result = { ok: true, text, t: w.t }; }
+function P(w, id) { return w.players[id - 1]; }
+function walkTo(p, g) { p.goal = g ? cp(g) : null; p.ram = false; }
+function formation(w, r, start = -90) { w.players.forEach((p, i) => { p.pos = polar(r, start + i * 36); p.home = cp(p.pos); }); }
+function storm(w) { w.dome = { r: 10, lethal: true }; }
+function mkUmb(w, pos, spin) { return { id: w.uid++, pos: cp(pos), vel: v(0, 0), alive: true, rider: null, spin: !!spin, lastRider: null, claim: null }; }
+function parkRing(w, n, r, start) { for (let k = 0; k < n; k++) w.umbrellas.push(mkUmb(w, polar(r, start + k * 360 / n))); }
+function tg(w, o) {
+  const t = Object.assign({ id: w.uid++, kind: 'circle', color: 'gold', c: v(0, 0), r: 2, a: 0, half: 30, len: 10, w: 3, t0: w.t, t1: Infinity, follow: null, onHit: null }, o);
+  w.tgs.push(t); return t;
+}
+function removeTg(w, t) { w.tgs = w.tgs.filter(x => x !== t); }
+function mark(w, p, color = 'gold', r = 1.3) { return tg(w, { kind: 'circle', color, r, follow: p, mark: true }); }
+function tgCenter(t) { return t.follow ? t.follow.pos : t.c; }
+function shapeOf(t) { return { kind: t.kind, c: cp(tgCenter(t)), r: t.r, a: t.a, half: t.half, len: t.len, w: t.w }; }
+function inTg(t, p, m = 0) {
+  const c = tgCenter(t);
+  if (t.kind === 'circle') return dist(p, c) <= t.r + m;
+  if (t.kind === 'sector') {
+    const d = dist(p, c); if (d > t.r + m) return false; if (d < 0.8) return true;
+    let da = angOf(sub(p, c)) - t.a; da = ((da % 360) + 540) % 360 - 180;
+    return Math.abs(da) <= t.half + (m / d) * 57.3;
+  }
+  const dir = polar(1, t.a), rel = sub(p, c), along = dot(rel, dir), side = Math.abs(dot(rel, perp(dir)));
+  return along >= -m && along <= t.len + m && side <= t.w / 2 + m;
+}
+function knockTo(w, p, target, dur) { if (p.riding) dismount(w, p, true); p.kb = { v: mul(sub(target, p.pos), 1 / dur), t: dur }; }
+function kill(w, p, why) {
+  if (!p.alive) return;
+  if (p.riding) { p.riding.rider = null; p.riding = null; }
+  if (p.orb) { p.orb.holder = null; p.orb = null; }
+  p.alive = false; p.electrified = false; p.death = why; p.y = 0; p.vy = 0;
+  w.fx.push({ kind: 'hit', at: cp(p.pos), t: w.t, life: 0.6 });
+}
+function destroyUmb(w, u) {
+  if (!u.alive) return;
+  u.alive = false;
+  w.fx.push({ kind: 'break', at: cp(u.pos), t: w.t, life: 0.6 });
+  if (u.rider) { const p = u.rider; u.rider = null; p.riding = null; if (w.dome && w.dome.lethal && len(p.pos) > w.dome.r) kill(w, p, '在風暴外落地'); }
+}
+function dismount(w, p, silent) {
+  const u = p.riding; if (!u) return;
+  u.rider = null; p.riding = null; u.vel = v(0, 0); p.pos = cp(u.pos);
+  if (!silent && w.mech.onDismount) w.mech.onDismount(w, p, u);
+  if (!silent && w.dome && w.dome.lethal && len(p.pos) > w.dome.r) kill(w, p, '在風暴外落地');
+}
+function act(w, p, a, pref) {
+  if (!p.alive || p.cage || p.kb) return;
+  if (a === 'jump') {
+    if (p.riding) return;
+    if (p.y <= 0.001 && p.vy === 0) { p.vy = JUMP_V; p.y = 0.001; if (w.mech.onJump) w.mech.onJump(w, p); }
+    return;
+  }
+  if (a === 'deflect') {
+    if (p.electrified) { if (p.you) note(w, '感電狀態無法卸勢'); return; }
+    if (p.exhausted) { if (p.you) note(w, '力竭中，暫時無法卸勢'); return; }
+    if (p.riding) return;
+    p.deflectT = w.t; w.fx.push({ kind: 'deflect', p, t: w.t, life: 0.4 });
+    return;
+  }
+  if (p.riding) { dismount(w, p); return; }
+  let best = null, bd = 2.4;
+  if (pref && pref.alive && !pref.rider && dist(p.pos, pref.pos) < bd) best = pref;
+  if (!best) for (const u of w.umbrellas) { if (!u.alive || u.rider) continue; const d = dist(p.pos, u.pos); if (d < bd) { bd = d; best = u; } }
+  if (best) { best.rider = p; best.lastRider = p; p.riding = best; p.y = 0; p.vy = 0; if (!p.ai) p.goal = null; return; }
+  for (const o of w.orbs) {
+    if (dist(p.pos, o.pos) >= 2.6) continue;
+    if (p.electrified) { if (p.you) note(w, '你已經有「感電」了'); return; }
+    if (o.holder) { if (p.you) note(w, '這顆雷電球已經有人拿了'); return; }
+    if (w.players.filter(q => q.alive && q.electrified).length >= 3) { if (p.you) note(w, '「感電」最多只能 3 人'); return; }
+    o.holder = p; p.orb = o; p.electrified = true; w.fx.push({ kind: 'zap', p, t: w.t, life: 0.5 });
+    if (p.you) note(w, '取得「感電」');
+    return;
+  }
+  if (p.you) note(w, '附近沒有可以互動的東西');
+}
+function desiredVel(u, goal, ram) {
+  const d = sub(goal, u.pos), L = len(d);
+  if (ram) return mul(norm(d), U_MAX);
+  if (L < 0.12) return v(0, 0);
+  return mul(d, Math.min(U_MAX, L * 2) / L);
+}
+function drive(w, p, dir, dt) {
+  p.move = null; p.steer = null;
+  if (!p.ai) {
+    if (dir) { p.goal = null; if (p.riding) p.steer = mul(dir, U_MAX); else p.move = mul(dir, SPEED); return; }
+    if (!p.goal) return;
+  }
+  if (p.riding) { p.steer = p.goal ? desiredVel(p.riding, p.goal, p.ram) : v(0, 0); return; }
+  if (p.goal) {
+    const d = sub(p.goal, p.pos), L = len(d);
+    if (L > 0.03) p.move = mul(d, Math.min(SPEED, L / dt) / L);
+    else if (!p.ai) p.goal = null;
+  }
+}
+function movePlayer(w, p, dt) {
+  if (!p.alive) return;
+  if (p.cage) { p.pos = cp(p.cage.c); p.y = p.cage.y; p.vy = 0; return; }
+  if (p.riding) { p.pos = cp(p.riding.pos); return; }
+  const prev = p.pos; let np = p.pos;
+  if (p.kb) { np = add(np, mul(p.kb.v, Math.min(dt, p.kb.t))); p.kb.t -= dt; }
+  else if (p.move) np = add(np, mul(p.move, dt));
+  if (w.vortex && !p.kb) { const L = len(np); if (L > 0.6 && L < w.vortex.r) np = add(np, mul(norm(np), -w.vortex.pull * dt)); }
+  if (p.y > 0 || p.vy > 0) { p.vy -= GRAV * dt; p.y += p.vy * dt; if (p.y <= 0) { p.y = 0; p.vy = 0; } }
+  if (w.dome && !p.kb) {
+    const wasIn = len(prev) <= w.dome.r, nowIn = len(np) <= w.dome.r;
+    if (wasIn !== nowIn) np = mul(norm(np), wasIn ? w.dome.r - 0.05 : w.dome.r + 0.05);
+  }
+  for (const f of w.fields) {
+    if (f.owner === p) continue;
+    const d = dist(np, f.c);
+    if (d < f.r) np = add(f.c, mul(d > 1e-3 ? norm(sub(np, f.c)) : v(1, 0), f.r));
+  }
+  const L = len(np); if (L > AR) np = mul(np, AR / L);
+  p.pos = np;
+  if (p.kb && p.kb.t <= 0) { p.kb = null; if (w.dome && w.dome.lethal && len(p.pos) > w.dome.r + 0.1) kill(w, p, '被擊出風暴範圍'); }
+}
+function moveUmbrellas(w, dt) {
+  for (const u of w.umbrellas) {
+    if (!u.alive) continue;
+    if (u.rider) {
+      const s = u.rider.steer;
+      if (s) { const dv = sub(s, u.vel), L = len(dv), m = U_ACC * dt; u.vel = L > m ? add(u.vel, mul(dv, m / L)) : s; }
+      else u.vel = mul(u.vel, 1 - 0.1 * dt);
+    } else u.vel = mul(u.vel, Math.max(0, 1 - 5 * dt));
+    const sp = len(u.vel); if (sp > U_MAX) u.vel = mul(u.vel, U_MAX / sp);
+    let np = add(u.pos, mul(u.vel, dt));
+    const lim = AR - 0.4;
+    if (len(np) > lim) {
+      const n = norm(np); np = mul(n, lim);
+      const r = dot(u.vel, n); if (r > 0) u.vel = sub(u.vel, mul(n, r));
+      u.vel = mul(u.vel, Math.max(0, 1 - 3 * dt));
+    }
+    u.pos = np;
+    if (u.rider) u.rider.pos = cp(np);
+  }
+}
+function resolveTgs(w) {
+  for (const t of w.tgs.slice()) {
+    if (t.done || t.t1 === Infinity || w.t < t.t1) continue;
+    t.done = true;
+    w.fx.push({ kind: 'flash', shape: shapeOf(t), color: t.color, t: w.t, life: 0.5 });
+    removeTg(w, t);
+    if (t.onHit) t.onHit(w, t);
+    if (w.result) return;
+  }
+}
+function computeTethers(w) {
+  w.tethers = [];
+  const E = w.players.filter(p => p.alive && p.electrified);
+  for (let i = 0; i < E.length; i++) for (let j = i + 1; j < E.length; j++)
+    if (dist(E[i].pos, E[j].pos) <= TETHER_MAX) w.tethers.push({ a: E[i], b: E[j] });
+}
+function tetherHits(w, pos, h) {
+  for (const t of w.tethers) {
+    const s = segInfo(pos, t.a.pos, t.b.pos);
+    const th = 0.9 + t.a.y + (t.b.y - t.a.y) * s.t;
+    if (s.d < 1.2 && Math.abs(th - h) < 1.1) return t;
+  }
+  return null;
+}
+function makeCage(w, p, c, float) {
+  if (p.riding) dismount(w, p, true);
+  const cg = { c: cp(c), y: float ? 2.9 : 0, p, touchT: -9 };
+  p.cage = cg; p.pos = cp(c); p.y = cg.y; p.goal = null;
+  w.cages.push(cg); w.fields.push({ c: cp(c), r: 2.4, owner: p, cage: cg, kind: 'cage' });
+  return cg;
+}
+function freeCage(w, cg) {
+  cg.p.cage = null; cg.p.vy = 0;
+  w.fields = w.fields.filter(f => f.cage !== cg); w.cages = w.cages.filter(x => x !== cg);
+  w.fx.push({ kind: 'zap', p: cg.p, t: w.t, life: 0.6 });
+}
+const cageTouched = (w, cg) => !!tetherHits(w, cg.c, cg.y + 0.9);
+function nearestFree(w, pos, claimer) {
+  let best = null, bd = 1e9;
+  for (const u of w.umbrellas) {
+    if (!u.alive || u.rider || (u.claim && u.claim !== claimer)) continue;
+    const d = dist(u.pos, pos); if (d < bd) { bd = d; best = u; }
+  }
+  if (best && claimer) best.claim = claimer;
+  return best;
+}
+function shelter(w, p) { return w.umbrellas.find(u => u.alive && !u.rider && dist(u.pos, p.pos) < 1.6 && p.y < 0.5); }
+function pickOrb(w, p) {
+  const o = p.st.orb;
+  if (o && !o.holder) return o;
+  let best = null, bd = 1e9;
+  for (const q of w.orbs) {
+    if (q.holder) continue;
+    if (w.players.some(x => x !== p && x.ai && x.st.orb === q && !x.electrified && x.alive)) continue;
+    const d = dist(p.pos, q.pos); if (d < bd) { bd = d; best = q; }
+  }
+  p.st.orb = best; return best;
+}
+function orbTask(w, p) {
+  const o = pickOrb(w, p); if (!o) return;
+  walkTo(p, o.pos);
+  if (dist(p.pos, o.pos) < 1.5) act(w, p, 'interact');
+}
+function umbTask(w, p, u, dest) {
+  if (!p.riding) {
+    if (p.st.parked) return 'done';
+    if (!u || !u.alive) return 'lost';
+    walkTo(p, u.pos);
+    if (dist(p.pos, u.pos) < 1.3) act(w, p, 'interact', u);
+    return 'walking';
+  }
+  p.goal = cp(dest); p.ram = false;
+  if (dist(p.riding.pos, dest) < 0.6 && len(p.riding.vel) < 2.5) { p.st.parked = true; act(w, p, 'interact'); return 'done'; }
+  return 'flying';
+}
+function collide(w, cb) {
+  const rs = w.umbrellas.filter(u => u.alive && u.rider);
+  for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
+    const a = rs[i], b = rs[j];
+    if (dist(a.pos, b.pos) >= 1.9 || w.t - (a.lastHit || -9) < 0.5 || w.t - (b.lastHit || -9) < 0.5) continue;
+    const n = norm(sub(b.pos, a.pos)), closing = dot(sub(a.vel, b.vel), n);
+    a.vel = mul(n, -5); b.vel = mul(n, 5); a.lastHit = b.lastHit = w.t;
+    w.fx.push({ kind: 'clash', at: mul(add(a.pos, b.pos), 0.5), t: w.t, life: 0.5 });
+    if (cb) cb(mul(add(a.pos, b.pos), 0.5), a, b, closing);
+  }
+}
+function dodgeGoal(w, ent, isUmb) {
+  const speed = isUmb ? 7.5 : SPEED;
+  const threats = w.tgs.filter(t => t.color === 'red' && t.t1 !== Infinity && t.t1 - w.t < 2.4);
+  const mem = ent._dg || (ent._dg = { goal: null, t: -9 });
+  if (w.t - mem.t < 0.12) return mem.goal;
+  mem.t = w.t;
+  if (!threats.length) { mem.goal = null; return null; }
+  const radii = isUmb ? [2.5, 5, 7.5] : [1.5, 3, 5, 7];
+  const cands = [cp(ent.pos)];
+  for (let k = 0; k < 16; k++) for (const r of radii) cands.push(add(ent.pos, polar(r, k * 22.5)));
+  let best = null, bs = Infinity;
+  for (const c of cands) {
+    const d = dist(ent.pos, c);
+    let s = d * 0.4;
+    if (len(c) > AR - 1) s += 60;
+    for (const t of threats) {
+      const tl = Math.max(0.02, t.t1 - w.t);
+      const reach = Math.min(1, (speed * tl * 0.8) / Math.max(d, 1e-3));
+      const atImpact = add(ent.pos, mul(sub(c, ent.pos), reach));
+      if (inTg(t, atImpact, isUmb ? 1.0 : 0.7)) s += 400 / (tl + 0.3);
+      if (inTg(t, c, isUmb ? 1.4 : 1.0)) s += 40;
+    }
+    if (isUmb) for (const o of w.umbrellas) if (o !== ent && o.alive && dist(o.pos, c) < 3) s += 30;
+    if (mem.goal) s += dist(mem.goal, c) * 0.15;
+    if (s < bs) { bs = s; best = c; }
+  }
+  mem.goal = best && dist(best, ent.pos) > 0.3 ? best : null;
+  return mem.goal;
+}
+function redRain(w, from, to, every, extra, r = 2.3, life = 1.6) {
+  for (let t = from; t < to; t += every) at(w, t, () => {
+    for (const u of w.umbrellas) {
+      if (!u.alive) continue;
+      let pred = add(u.pos, mul(u.vel, 0.9)); if (len(pred) > AR - 1) pred = mul(norm(pred), AR - 1);
+      tg(w, { kind: 'circle', color: 'red', r, c: pred, t1: w.t + life, onHit: rainHit });
+    }
+    for (let k = 0; k < extra; k++) tg(w, { kind: 'circle', color: 'red', r, c: polar(Math.sqrt(w.rnd()) * (AR - 2), w.rnd() * 360), t1: w.t + life, onHit: rainHit });
+  });
+}
+function rainHit(w, t) { for (const u of w.umbrellas) if (u.alive && inTg(t, u.pos, 0.4)) destroyUmb(w, u); }
+
+function step(w, dt, input) {
+  if (w.result) { ageFx(w); return; }
+  w.t += dt;
+  while (w.queue.length && w.queue[0].t <= w.t) { w.queue.shift().fn(w); if (w.result) return; }
+  if (w.cast && w.cast.t1 != null && w.t > w.cast.t1 + 0.4) w.cast = null;
+  const you = w.players[0];
+  let dir = null;
+  if (!you.ai && input) {
+    for (const a of input.actions.splice(0)) act(w, you, a);
+    if (input.click) { you.goal = input.click; you.ram = false; input.click = null; }
+    dir = input.dir;
+  }
+  for (const p of w.players) {
+    if (!p.alive || p.cage) continue;
+    if (p.ai && w.mech.ai) w.mech.ai(w, p);
+    drive(w, p, p.ai ? null : dir, dt);
+  }
+  for (const p of w.players) movePlayer(w, p, dt);
+  moveUmbrellas(w, dt);
+  resolveTgs(w);
+  if (w.result) return;
+  computeTethers(w);
+  if (w.mech.update) w.mech.update(w, dt);
+  ageFx(w);
+  if (!w.result && !you.alive) fail(w, '你倒下了：' + you.death);
+}
+function ageFx(w) { w.fx = w.fx.filter(f => w.t - f.t < f.life); }
+
+// ---------- 第一階段：天涯客 Wayfarer ----------
+function ramAI(w, p, pairIds) {
+  const [A, B] = w.umbrellas, you = P(w, 1);
+  const mine = p.id === pairIds[0] ? A : (you.riding === B ? A : B);
+  if (!p.riding) { if (mine.alive) { walkTo(p, mine.pos); if (dist(p.pos, mine.pos) < 1.3) act(w, p, 'interact', mine); } return null; }
+  return w.umbrellas.find(u => u !== p.riding && u.alive);
+}
+
+def({
+  id: 'umbrella', phase: 1, zh: '千機化傘', en: 'Thousand-Machine Umbrella',
+  brief: 'BOSS 在場中央召喚兩把傘，兩名隊員騎上去讓兩把傘互撞。',
+  steps: ['BOSS 在場中央召喚兩把傘。', '派兩名隊員走到傘旁按「互動」飛上傘。', '操控兩把傘互相對撞，撞到就化解。'],
+  fail: '傘沒被撞掉：每 20 秒一次全場傷害，並附加易傷。',
+  task: '你是騎傘手之一：走到左邊的傘旁按 E 上傘，朝另一把傘全速衝過去。',
+  src: { b: '0:44', a: '0:12' },
+  setup(w) {
+    formation(w, 6);
+    at(w, 0.3, () => { cast(w, '千機化傘', 'Thousand-Machine Umbrella', 0.3, 2); say(w, 'BOSS 在場中央召喚兩把傘', '派兩名隊員：走到傘旁按「互動」飛上傘'); });
+    at(w, 2, () => { w.umbrellas.push(mkUmb(w, v(-5, 0.5)), mkUmb(w, v(5, 0.5))); w.f.end = w.t + 22; w.bars = [{ label: '全場傷害倒數', val: () => Math.max(0, w.f.end - w.t), max: 22, color: 'red', fmt: 's' }]; });
+    at(w, 4, () => say(w, '讓兩把傘互相對撞', '騎上傘後直接朝另一把傘全速衝過去'));
+    at(w, 24, () => fail(w, '時間到傘還在：全場傷害並附加易傷'));
+  },
+  ai(w, p) {
+    if (p.id > 2 || w.umbrellas.length < 2) return;
+    const other = ramAI(w, p, [1, 2]); if (!other) return;
+    if (other.rider) { p.goal = cp(other.pos); p.ram = true; } else p.goal = null;
+  },
+  update(w) { collide(w, (pt, a, b, c) => { if (c > 3) win(w, '兩把傘成功對撞，機制化解！'); else note(w, '撞得太慢沒有效果：要加速衝撞'); }); },
+});
+
+def({
+  id: 'clouds', phase: 1, zh: '流雲', en: 'Flowing Clouds',
+  brief: 'BOSS 召喚一把旋轉傘，一人騎上去並持續移動，躲開地上的紅圈。',
+  steps: ['BOSS 召喚一把會旋轉的傘。', '派一名隊員按「互動」飛上傘。', '持續移動，躲開地面的紅光攻擊（紅圈）。', '技巧：貼著場地邊緣移動比較好躲；想停下來就故意卡牆。'],
+  fail: '傘被紅圈打到：全場傷害，並疊加「傷害降低」。',
+  task: '你是騎傘手：走到傘旁按 E 上傘，用方向鍵躲開紅圈約 15 秒。',
+  src: { b: '0:57', a: '0:33' },
+  setup(w) {
+    formation(w, 6);
+    at(w, 0.3, () => { cast(w, '流雲', 'Flowing Clouds', 0.3, 1.8); say(w, 'BOSS 召喚一把旋轉的傘', '派一人上傘'); });
+    at(w, 1.8, () => w.umbrellas.push(mkUmb(w, v(0, 2.5), true)));
+    at(w, 2.6, () => say(w, '持續移動，躲開地上的紅圈', '傘沒有輸入也會漂移；貼著場邊跑，要停就卡牆'));
+    redRain(w, 3.5, 17, 0.9, 1);
+    at(w, 19.5, () => win(w, '成功躲過所有紅圈！'));
+  },
+  ai(w, p) {
+    if (p.id !== 1) return;
+    const u = w.umbrellas[0]; if (!u) return;
+    if (!p.riding) { walkTo(p, u.pos); if (dist(p.pos, u.pos) < 1.3) act(w, p, 'interact', u); return; }
+    p.goal = dodgeGoal(w, u, true); p.ram = false;
+  },
+  update(w) { if (w.umbrellas.some(u => !u.alive)) fail(w, '傘被紅圈擊中：全場傷害並疊加「傷害降低」'); },
+});
+
+function unbound(id, zh, en, n, src) {
+  def({
+    id, phase: 1, zh, en,
+    brief: `BOSS 生成 ${n} 把旋轉傘並放出大量紅圈，${n} 名隊員騎傘躲避；被摧毀兩把就團滅。`,
+    steps: [`BOSS 在場上生成 ${n} 把旋轉傘，並放出大量紅圈。`, `派 ${n} 名隊員各騎一把傘。`, '持續移動躲紅圈，不要讓傘被打到。', '只要有兩把傘被摧毀就會團滅。', '技巧：貼著場邊跑、要停就卡牆；傘上的特殊技能用完會短暫無法操作，不建議用。'],
+    fail: '兩把傘被摧毀：團滅。',
+    task: `你騎其中一把傘（另外 ${n - 1} 把由隊友負責），撐過紅圈攻勢。`,
+    src,
+    setup(w) {
+      formation(w, 6);
+      at(w, 0.3, () => { cast(w, zh, en, 0.3, 1.8); say(w, `BOSS 生成 ${n} 把旋轉傘`, `${n} 名隊員各自上傘`); });
+      at(w, 1.8, () => {
+        for (let i = 0; i < n; i++) w.umbrellas.push(mkUmb(w, polar(3.6, -90 + i * 36), true));
+        w.bars = [{ label: '被摧毀的傘', val: () => w.umbrellas.filter(u => !u.alive).length, max: 2, color: 'red', fmt: 'n/2' }];
+      });
+      at(w, 2.8, () => say(w, '大量紅圈落下', '兩把傘被摧毀就團滅'));
+      redRain(w, 3.5, 17, 0.8, 1);
+      at(w, 19.5, () => win(w, '所有傘都撐過紅圈攻勢！'));
+    },
+    ai(w, p) {
+      if (p.id > n) return;
+      if (!p.riding) { const u = w.umbrellas[p.id - 1]; if (!u || !u.alive || u.rider) return; walkTo(p, u.pos); if (dist(p.pos, u.pos) < 1.3) act(w, p, 'interact', u); return; }
+      p.goal = dodgeGoal(w, p.riding, true); p.ram = false;
+    },
+    update(w) {
+      collide(w, null);
+      const lost = w.umbrellas.filter(u => !u.alive);
+      if (lost.length >= 2) fail(w, '兩把傘被摧毀：團滅');
+      else if (w.mode === 'play' && lost.some(u => !u.lastRider || u.lastRider.you)) fail(w, '你的傘被摧毀了（再壞一把就團滅）');
+    },
+  });
+}
+unbound('unbound', '流雲無定', 'Flowing Clouds Unbound', 4, { b: '1:08', a: '1:03' });
+
+def({
+  id: 'halberd', phase: 1, zh: '千機化戟', en: 'Thousand-Machine Halberd',
+  brief: 'BOSS 把全員震到場邊並在中央生成風暴；大家要騎傘飛進風暴，並避開「環刃斷傘」。',
+  steps: ['BOSS 短暫蓄力後，把所有人震到場邊。', '場中央生成風暴（白色風牆），用走的進不去。', '每人抓一把場邊的傘，騎傘飛進風暴後按「互動」落地。', '千萬不要在風暴外落地，會直接陣亡。', 'BOSS 接著放「環刃斷傘 Ring Blade Umbrella Break」，BOSS 附近的傘會被摧毀，傘要停遠一點。', '盡量把 10 把傘都帶進風暴，後面的機制都要用傘。'],
+  fail: '在風暴外落地：陣亡。傘停在 BOSS 旁：被環刃斷傘摧毀，後面傘不夠用。',
+  task: '被震飛後走到身邊的傘按 E 上傘，飛進風暴，在離 BOSS 有段距離的地方再按 E 落地。',
+  src: { b: '1:41', a: '1:27' },
+  setup(w) {
+    formation(w, 4);
+    at(w, 0.3, () => { cast(w, '千機化戟', 'Thousand-Machine Halberd', 0.3, 2.3); say(w, 'BOSS 蓄力中', '準備被震到場邊'); });
+    at(w, 2.3, () => { for (const p of w.players) knockTo(w, p, polar(16.5, angOf(p.pos)), 0.45); });
+    at(w, 2.9, () => {
+      storm(w);
+      w.players.forEach(p => { const u = mkUmb(w, polar(18, angOf(p.pos) + 6)); w.umbrellas.push(u); p.st.umb = u; });
+      say(w, '場中央出現風暴', '抓住身邊的傘，騎傘飛進風暴再落地');
+      w.bars = [{ label: '風暴內的傘', val: () => w.umbrellas.filter(u => u.alive && len(u.pos) <= w.dome.r).length, max: 10, color: 'gold', fmt: 'n/10' }];
+    });
+    at(w, 9.5, () => {
+      cast(w, '環刃斷傘', 'Ring Blade Umbrella Break', 9.5, 11.7);
+      say(w, 'BOSS 施放環刃斷傘', '紅圈內的傘會被摧毀：傘不要停在 BOSS 旁邊');
+      tg(w, { kind: 'circle', color: 'red', r: 4.5, c: v(0, 0), t1: 11.7, onHit: (w, t) => { for (const u of w.umbrellas) if (u.alive && inTg(t, u.pos, 0.3)) destroyUmb(w, u); } });
+    });
+    at(w, 14, () => {
+      for (const p of w.players) { if (!p.alive) continue; if (p.riding) dismount(w, p); if (len(p.pos) > w.dome.r) kill(w, p, '沒有進入風暴'); }
+      if (!P(w, 1).alive) return;
+      const n = w.umbrellas.filter(u => u.alive && len(u.pos) <= w.dome.r).length;
+      if (w.f.youUmb && !w.f.youUmb.alive) fail(w, '你的傘停在 BOSS 附近，被環刃斷傘摧毀了');
+      else win(w, `你成功進入風暴。風暴內的傘：${n}/10`);
+    });
+  },
+  ai(w, p) { if (!w.dome || p.kb || !p.st.umb) return; umbTask(w, p, p.st.umb, polar(7.5, angOf(p.st.umb.pos))); },
+  onDismount(w, p, u) { if (p.you) w.f.youUmb = u; },
+});
+
+def({
+  id: 'dragon', phase: 1, zh: '神機化龍', en: 'Divine Machine Dragon',
+  brief: '被點名的人會被分身跳砸兩次：一次躲傘下抵銷，一次自己硬吃。',
+  steps: ['（風暴內，接下來大部分招式都會放兩次）BOSS 隨機點名玩家，腳下出現金圈。', '分身會對被點名的人跳砸兩次，被打中兩次會直接陣亡。', '其中一次躲到傘的正下方，用傘抵銷（傘會被摧毀）。', '另一次直接用身體硬吃。', '目的是保留更多傘給後面的機制，所以不要兩次都用傘。'],
+  fail: '被打中兩次：陣亡。兩次都用傘：浪費一把傘。',
+  task: '你被點名：第一下站著硬吃，之後走到最近的傘的正下方擋第二下。',
+  src: { b: '2:24', a: '1:57' },
+  setup(w) {
+    storm(w); parkRing(w, 8, 7, -67.5); formation(w, 3.5);
+    at(w, 0.3, () => {
+      cast(w, '神機化龍', 'Divine Machine Dragon', 0.3, 2.3);
+      for (const p of [P(w, 1), P(w, 6)]) { mark(w, p); p.st.marked = true; }
+      say(w, '1 號（你）和 6 號被點名', '分身會跳砸兩次：一次躲傘下抵銷，一次硬吃');
+    });
+    for (const [t0, t1] of [[3.3, 4.8], [6.8, 8.3]]) at(w, t0, () => {
+      for (const p of [P(w, 1), P(w, 6)]) if (p.alive) tg(w, { kind: 'circle', color: 'gold', r: 2, follow: p, t0, t1, onHit: () => dragonHit(w, p) });
+    });
+    at(w, 5.2, () => say(w, '第一下硬吃了', '第二下之前躲到傘的正下方'));
+    at(w, 9.5, () => {
+      if (P(w, 1).hits === 0) win(w, '兩下都用傘擋掉：活下來了，但多用掉一把傘');
+      else win(w, '一下硬吃、一下用傘抵銷，成功保住更多傘！');
+    });
+  },
+  ai(w, p) {
+    if (!p.st.marked) return;
+    if (w.t < 4.9) { walkTo(p, p.home); return; }
+    if (!p.st.u || !p.st.u.alive) p.st.u = nearestFree(w, p.pos, p);
+    if (p.st.u) walkTo(p, p.st.u.pos);
+  },
+});
+function dragonHit(w, p) {
+  if (!p.alive) return;
+  w.fx.push({ kind: 'ghost', at: cp(p.pos), t: w.t, life: 0.8 });
+  const u = shelter(w, p);
+  if (u) { destroyUmb(w, u); if (p.you) note(w, '傘抵銷了這次攻擊（傘被摧毀）'); return; }
+  p.hits++; p.hp -= 45;
+  if (p.hits >= 2) kill(w, p, '被分身打中兩次');
+  else if (p.you) note(w, '硬吃一下：再被打中就會死');
+}
+
+def({
+  id: 'swan', phase: 1, zh: '孤鴻掠雪', en: 'Lone Swan Sweeping Snow',
+  brief: '承傷者腳下出現金圈，讀條結束時 BOSS 會到他身邊擊退全場；別被擊出風暴。',
+  steps: ['（風暴內）承傷隊員腳下出現金圈。', '讀條結束時，BOSS 會移動到承傷者旁邊，對全體擊退。', '承傷者在讀條結束前，先站到風暴內的邊緣。', '其他人靠近 BOSS、站在承傷者的內側（靠場中央那邊），擊退方向才會朝內。', '也可以用「神龍吐火」的強韌效果，或三段跳到空中躲掉擊退。'],
+  fail: '被擊退到風暴外：陣亡。',
+  task: '你是承傷者：讀條結束前走到風暴內緣（白色風牆旁），隊友會站在你的內側。也可以在擊退瞬間按空白鍵跳起來。',
+  src: { b: '2:50', a: '2:18' },
+  setup(w) {
+    storm(w); formation(w, 3);
+    at(w, 0.3, () => {
+      cast(w, '孤鴻掠雪', 'Lone Swan Sweeping Snow', 0.3, 6.3); mark(w, P(w, 1));
+      say(w, '你被點名為承傷者', '走到風暴內緣；其他人會站在你的內側');
+      w.markers = [{ c: polar(8.6, -90), label: '建議位置' }];
+    });
+    at(w, 6.3, () => swanHit(w));
+    at(w, 7.4, () => {
+      if (!P(w, 1).alive) return;
+      const dead = w.players.filter(p => !p.alive).length;
+      if (dead) fail(w, `${dead} 名隊友被擊出風暴：承傷者要站在風暴內緣，讓 BOSS 從外側把大家往內推`);
+      else win(w, '全員被擊退到風暴內側，安全！');
+    });
+  },
+  ai(w, p) {
+    const T = P(w, 1);
+    if (p.id === 1) { walkTo(p, polar(8.6, -90)); return; }
+    if (w.t < 0.8) return;
+    const out = len(T.pos) > 0.5 ? norm(T.pos) : v(0, 1), k = p.id - 2;
+    walkTo(p, add(sub(T.pos, mul(out, 2.5 + Math.floor(k / 3) * 1.3)), mul(perp(out), (k % 3 - 1) * 1.4)));
+  },
+});
+function swanHit(w) {
+  const T = P(w, 1);
+  let b = add(T.pos, mul(len(T.pos) > 0.3 ? norm(T.pos) : v(0, 1), 1.6));
+  if (len(b) > 9.6) b = mul(norm(b), 9.6);
+  w.boss.pos = b;
+  w.fx.push({ kind: 'flash', shape: { kind: 'circle', c: cp(b), r: 13 }, color: 'gold', t: w.t, life: 0.6 });
+  for (const p of w.players) {
+    if (!p.alive) continue;
+    if (p.y > 0.4) { if (p.you) note(w, '跳起來躲過擊退！'); continue; }
+    const d = sub(p.pos, b), n = len(d) > 0.2 ? norm(d) : norm(mul(b, -1));
+    knockTo(w, p, add(p.pos, mul(n, 8)), 0.4);
+  }
+}
+
+function spine(id, zh, en, B, src) {
+  def({
+    id, phase: 1, zh, en,
+    brief: B ? '和第一次「龍脊碎岳」完全相同，但改由第二組（沒有力竭的人）卸勢。' : 'BOSS 上金盾，場中央出現紅圈：紅圈內要放一把傘，並至少三人卸勢。',
+    steps: B
+      ? ['機制和第一次「龍脊碎岳」完全相同。', '第一次卸勢成功的人身上有「力竭」，短時間內不能再卸勢。', '這次換第二組上去：紅圈內一把傘＋至少三人在紅圈內卸勢。', '建議開打前就照隊伍列表分兩組輪流。']
+      : ['（風暴內）BOSS 為自己套上金色護盾並開始讀秒。', '場中央出現紅圈（位置固定，可以提前把傘放好）。', '紅圈內放一把傘，傘可以削減 BOSS 護盾。', '至少三名隊員站在紅圈內，在讀條結束時「卸勢」。', '卸勢成功的人會被掛上「力竭」，下一次換另一組。'],
+    fail: '紅圈內沒有傘，或卸勢的人少於三人：團滅。',
+    task: '你負責卸勢：走進紅圈，看著上方讀條，在綠色區段（最後 0.7 秒）按 Q。',
+    src,
+    setup(w) {
+      storm(w); parkRing(w, 8, 7.5, -67.5); formation(w, 6); w.boss.shield = 1;
+      w.f.def = B ? [1, 6, 7] : [1, 2, 3]; w.f.car = B ? 5 : 4;
+      if (B) [2, 3, 4].forEach(i => { P(w, i).exhausted = true; });
+      at(w, 0.3, () => {
+        cast(w, zh, en, 0.3, 9.3, true);
+        tg(w, { kind: 'circle', color: 'red', r: 3.2, c: v(0, 0), t1: 9.3, onHit: spineResolve });
+        say(w, 'BOSS 上金盾並讀秒，場中央出現紅圈', B ? '有「力竭」的人不能卸勢，換第二組上' : '紅圈內放一把傘，至少三人在紅圈內卸勢');
+      });
+      at(w, 6.5, () => say(w, '準備卸勢', '讀條進入綠色區段時按「卸勢」（Q）'));
+    },
+    ai(w, p) {
+      if (p.id === w.f.car) { if (!p.st.u) p.st.u = nearestFree(w, p.pos, p); umbTask(w, p, p.st.u, polar(2, 60)); return; }
+      const i = w.f.def.indexOf(p.id); if (i < 0) return;
+      walkTo(p, polar(2.3, [-90, -30, -150][i]));
+      if (w.t >= 9.3 - 0.3 && !p.st.d) { p.st.d = true; act(w, p, 'deflect'); }
+    },
+  });
+}
+function spineResolve(w) {
+  const umb = w.umbrellas.some(u => u.alive && !u.rider && len(u.pos) <= 3.4);
+  const ok = w.players.filter(p => p.alive && len(p.pos) <= 3.5 && !p.exhausted && !p.electrified && w.t - p.deflectT <= DEFLECT_WIN + 0.02 && w.t >= p.deflectT);
+  if (!umb) return fail(w, '紅圈內沒有傘：團滅');
+  if (ok.length < 3) return fail(w, `只有 ${ok.length} 人成功卸勢（至少要 3 人）：團滅` + (w.mode === 'play' && !ok.includes(P(w, 1)) ? '。你沒有在綠色區段內按卸勢' : ''));
+  ok.forEach(p => { p.exhausted = true; });
+  w.boss.shield = 0;
+  win(w, `${ok.length} 人卸勢成功，紅圈內也有傘：擋下攻擊！`);
+}
+spine('spine', '龍脊碎岳', 'Dragon Spine Shattering Mountains', false, { b: '3:23', a: '2:48' });
+
+def({
+  id: 'spine-break', phase: 1, zh: '龍脊碎岳．破', en: 'Dragon Spine Shattering Mountains – Break',
+  brief: '風暴內出現兩個固定金圈，提前把傘移進金圈，擋下分身攻擊。',
+  steps: ['（風暴內）出現兩個金圈，位置固定。', '騎傘把傘移進金圈裡，按「互動」落地停好；有傘的金圈會變綠。', '讀條結束時兩個金圈都要有傘，才能擋下 BOSS 分身的攻擊。', '這招之後還會再出一次，金圈位置一樣，可以提前準備。'],
+  fail: '金圈內沒有傘：全隊被附加易傷（最多疊 4 層）。',
+  task: '騎一把傘飛到左邊的金圈裡，按 E 落地停好（另一個金圈由隊友負責）。',
+  src: { b: '3:58', a: '3:15' },
+  setup(w) {
+    storm(w); parkRing(w, 8, 7.5, -67.5); formation(w, 5);
+    const C = w.f.C = [polar(4.5, 225), polar(4.5, 315)];
+    at(w, 0.3, () => {
+      cast(w, '龍脊碎岳．破', 'Dragon Spine Shattering Mountains – Break', 0.3, 10.3);
+      w.f.tgs = C.map(c => tg(w, { kind: 'circle', color: 'gold', r: 2, c, t1: 10.3, onHit: (w, t) => {
+        const u = w.umbrellas.find(u => u.alive && !u.rider && inTg(t, u.pos));
+        if (u) destroyUmb(w, u); else w.f.miss = (w.f.miss || 0) + 1;
+      } }));
+      say(w, '風暴內出現兩個固定金圈', '把傘移進金圈並停好（金圈變綠就成功）');
+    });
+    at(w, 10.45, () => { if (w.f.miss) fail(w, `${w.f.miss} 個金圈沒有傘：全隊易傷`); else win(w, '兩個金圈都有傘，擋下分身攻擊！'); });
+  },
+  ai(w, p) {
+    const C = w.f.C; if (!w.f.tgs) return;
+    if (p.id === 1) { if (!p.st.u) p.st.u = nearestFree(w, C[0], p); umbTask(w, p, p.st.u, C[0]); }
+    if (p.id === 2) {
+      const you = P(w, 1), yu = you.riding;
+      const tgt = w.mode === 'play' && yu && dist(yu.pos, C[1]) < dist(yu.pos, C[0]) ? C[0] : C[1];
+      if (!p.st.u) p.st.u = nearestFree(w, C[1], p);
+      umbTask(w, p, p.st.u, tgt);
+    }
+  },
+  update(w) { for (const t of (w.f.tgs || [])) t.color = w.umbrellas.some(u => u.alive && !u.rider && inTg(t, u.pos)) ? 'green' : 'gold'; },
+});
+
+spine('spine-x', '龍脊碎岳．極', 'Dragon Spine Shattering Mountains – Extreme', true, { b: '4:20', a: '3:42' });
+
+def({
+  id: 'umbrella-break', phase: 1, zh: '千機化傘．破', en: 'Thousand-Machine Umbrella – Break',
+  brief: '和「千機化傘」一樣生成兩把傘，但多一個追人的分身；要在分身旁邊撞傘。',
+  steps: ['（風暴結束後）生成兩把傘，和開場的「千機化傘」一樣。', '多出一個分身，會隨機追一名玩家，追到就秒殺（或 25 秒後秒殺）。', '兩人騎傘，在分身旁邊互相對撞。', '撞擊成功後分身進入「氣竭」，全隊集火把它打掉。'],
+  fail: '分身碰到目標：目標被秒殺。',
+  task: '騎上一把傘飛到分身旁邊；隊友會從另一側衝過來和你對撞（撞擊點要在分身旁）。',
+  src: { b: '4:41', a: '4:42' },
+  setup(w) {
+    formation(w, 6);
+    at(w, 0.3, () => { cast(w, '千機化傘．破', 'Thousand-Machine Umbrella – Break', 0.3, 2); say(w, 'BOSS 召喚兩把傘和一個分身', '分身會追 8 號，追到就秒殺'); });
+    at(w, 2, () => {
+      w.umbrellas.push(mkUmb(w, polar(3.6, -60)), mkUmb(w, polar(3.6, -120)));
+      w.clone = { pos: v(0, 0), target: P(w, 8), speed: 1.5, hp: 100, broken: false, dead: false };
+      mark(w, P(w, 8), 'red', 1.2);
+    });
+    at(w, 3.2, () => say(w, '兩人騎傘，在分身旁邊對撞', '撞擊點離分身太遠就沒有效果'));
+    at(w, 30, () => fail(w, '分身沒有被處理：目標被秒殺'));
+  },
+  ai(w, p) {
+    const c = w.clone;
+    if (p.id === 8) { walkTo(p, polar(17, 162)); return; }
+    if (!c || p.id > 2 || w.umbrellas.length < 2) return;
+    const other = ramAI(w, p, [1, 2]); if (!other) return;
+    if (c.broken) { p.goal = null; return; }
+    const side = perp(norm(sub(c.target.pos, c.pos))), you = P(w, 1);
+    if (w.mode === 'demo') {
+      const sg = p.id === 1 ? 1 : -1, stage = add(c.pos, mul(side, sg * 5));
+      if (!w.f.ram) {
+        p.goal = stage; p.ram = false;
+        if (!w.f.stageT && other.rider) w.f.stageT = w.t;
+        const ready = other.rider && dist(p.riding.pos, stage) < 1 && dist(other.pos, add(c.pos, mul(side, -sg * 5))) < 1;
+        if (ready || (w.f.stageT && w.t - w.f.stageT > 5)) w.f.ram = true;
+      } else { p.goal = cp(other.pos); p.ram = true; }
+    } else if (you.riding && dist(you.riding.pos, c.pos) < 6.5) { p.goal = cp(you.riding.pos); p.ram = true; }
+    else { p.goal = add(c.pos, mul(you.riding ? norm(sub(c.pos, you.riding.pos)) : side, 5)); p.ram = false; }
+  },
+  update(w, dt) {
+    const c = w.clone; if (!c || c.dead) return;
+    if (!c.broken) {
+      const d = sub(c.target.pos, c.pos), L = len(d);
+      if (L < 1.2) { kill(w, c.target, '被分身秒殺'); return fail(w, '分身追到 8 號：秒殺'); }
+      c.pos = add(c.pos, mul(d, Math.min(c.speed * dt, L) / L));
+      collide(w, (pt, a, b, cl) => {
+        if (cl < 3) return note(w, '撞得太慢沒有效果');
+        if (dist(pt, c.pos) < 3.5) { c.broken = true; say(w, '分身進入「氣竭」！', '全隊集火把它打掉'); }
+        else { note(w, '撞擊點離分身太遠，沒有效果'); w.f.ram = false; w.f.stageT = w.t; }
+      });
+    } else {
+      collide(w, null);
+      c.hp -= 40 * dt;
+      if (c.hp <= 0) { c.dead = true; win(w, '分身被擊破，機制化解！'); }
+    }
+  },
+});
+
+unbound('unbound-break', '流雲無定．破', 'Flowing Clouds Unbound – Break', 6, { b: '5:05', a: '4:18' });
+
+// ---------- 第二階段：鵬 Peng ----------
+def({
+  id: 'cage', phase: 2, zh: '牢籠．黜 / 牢籠．浮', en: 'Cage – Banish / Cage – Float',
+  brief: '隊友被關進牢籠；兩人拿雷電球取得「感電」，用兩人之間的雷電連線碰牢籠救人。',
+  steps: ['BOSS 隨機點名一名隊員，把他困在無法靠近的力場（牢籠）裡。', '另外兩名隊員去碰場邊的雷電球，取得「感電」。', '兩個感電的人靠近時會自動連出一條雷電。', '移動站位，讓雷電連線穿過牢籠，就能把人救出來。', '「黜」把人困在地面；「浮」困在空中，兩人要同時跳起來讓連線碰到牢籠。'],
+  fail: '時間內沒救出來：被困的隊友陣亡。',
+  task: '走到雷電球旁按 E 取得感電，再站到牢籠旁，讓你和隊友的連線穿過牢籠。空中牢籠要按空白鍵跳（隊友會跟著跳）。',
+  src: { b: '5:53', a: '5:45' },
+  setup(w) {
+    formation(w, 6); w.f.resc = [1, 3]; P(w, 1).st.orb = w.orbs[1]; P(w, 3).st.orb = w.orbs[2];
+    at(w, 0.3, () => { cast(w, '牢籠．黜', 'Cage – Banish', 0.3, 2.3); w.f.m = mark(w, P(w, 5)); say(w, 'BOSS 點名 5 號', '兩人去碰雷電球取得「感電」'); });
+    at(w, 2.3, () => {
+      removeTg(w, w.f.m); w.f.cage = makeCage(w, P(w, 5), P(w, 5).pos, false); w.f.stage = 1; w.f.dl = w.t + 16;
+      say(w, '5 號被關進地面牢籠', '讓兩人之間的雷電連線穿過牢籠');
+      w.bars = [{ label: '救援倒數', val: () => Math.max(0, w.f.dl - w.t), max: 16, color: 'red', fmt: 's' }];
+    });
+  },
+  ai(w, p) {
+    if (!w.f.resc.includes(p.id)) return;
+    if (!p.electrified) { orbTask(w, p); return; }
+    const cg = w.f.cage; if (!cg) return;
+    let axis;
+    if (w.mode === 'demo') {
+      if (w.f.axisFor !== cg) { w.f.axis = norm(sub(P(w, 1).pos, cg.c)); w.f.axisFor = cg; }
+      axis = p.id === 1 ? w.f.axis : mul(w.f.axis, -1);
+    } else {
+      const you = P(w, 1);
+      axis = you.electrified ? norm(sub(cg.c, you.pos)) : norm(sub(p.pos, cg.c));
+    }
+    walkTo(p, add(cg.c, mul(axis, 4)));
+    if (cg.y > 0 && w.mode === 'demo' && p.id === 1) {
+      const a = P(w, 1), b = P(w, 3);
+      const ready = b.electrified && dist(a.pos, add(cg.c, mul(w.f.axis, 4))) < 0.6 && dist(b.pos, add(cg.c, mul(w.f.axis, -4))) < 0.6 && a.y === 0 && b.y === 0;
+      if (!ready) w.f.readyT = null; else if (!w.f.readyT) w.f.readyT = w.t;
+      if (ready && w.t - w.f.readyT > 0.8 && w.t - (w.f.jt || -9) > 1.3) { w.f.jt = w.t; act(w, a, 'jump'); act(w, b, 'jump'); }
+    }
+  },
+  onJump(w, p) { if (w.mode === 'play' && p.you) { const q = P(w, 3); if (q.electrified && q.alive) act(w, q, 'jump'); } },
+  update(w) {
+    const cg = w.f.cage; if (!cg) return;
+    if (cageTouched(w, cg)) {
+      freeCage(w, cg); w.f.cage = null;
+      if (w.f.stage === 1) {
+        say(w, '救出 5 號！', '下一招：牢籠．浮');
+        at(w, w.t + 1.2, () => { cast(w, '牢籠．浮', 'Cage – Float', w.t, w.t + 2); w.f.m = mark(w, P(w, 9)); say(w, 'BOSS 點名 9 號', '這次牢籠會浮在空中'); });
+        at(w, w.t + 3.2, () => { removeTg(w, w.f.m); w.f.cage = makeCage(w, P(w, 9), P(w, 9).pos, true); w.f.stage = 2; w.f.dl = w.t + 16; say(w, '9 號被關進空中牢籠', '兩人站好後一起跳，讓連線碰到空中的牢籠'); });
+      } else win(w, '兩個牢籠都救出來了！');
+      return;
+    }
+    if (w.t > w.f.dl) { kill(w, cg.p, '困在牢籠裡'); fail(w, '沒有及時救出隊友'); }
+  },
+});
+
+def({
+  id: 'slash', phase: 2, zh: '電斬．徑 / 電斬．扇', en: 'Lightning Slash – Path / Fan',
+  brief: '救完人後緊接的直線、扇形紅光；身上有感電不能卸勢，只能閃。',
+  steps: ['「牢籠」結束後，BOSS 接著放「電斬．徑」（直線紅光）和「電斬．扇」（扇形紅光）。', '身上還有「感電」的人不能卸勢。', '這些紅光傷害高，又帶控場效果，能閃就閃，不要硬接。'],
+  fail: '被紅光打中：高傷害＋被控場。',
+  task: '你身上有感電，無法卸勢：看到直線或扇形紅光就往側邊走出去。',
+  src: { b: '6:23' },
+  setup(w) {
+    formation(w, 7);
+    const you = P(w, 1); you.electrified = true; you.orb = w.orbs[1]; w.orbs[1].holder = you;
+    at(w, 0.3, () => {
+      cast(w, '電斬．徑', 'Lightning Slash – Path', 0.3, 2.3);
+      for (const id of [1, 3, 7, 9]) tg(w, { kind: 'rect', color: 'red', c: v(0, 0), a: angOf(P(w, id).pos), len: 20, w: 3.2, t1: 2.3, onHit: slashHit });
+      say(w, '直線紅光朝玩家打過來', '感電中不能卸勢：往側邊閃');
+    });
+    at(w, 2.7, () => {
+      cast(w, '電斬．扇', 'Lightning Slash – Fan', 2.7, 4.7);
+      for (const id of [1, 6]) tg(w, { kind: 'sector', color: 'red', c: v(0, 0), a: angOf(P(w, id).pos), half: 35, r: 19, t1: 4.7, onHit: slashHit });
+      say(w, '接著是扇形紅光', '繞到扇形外面');
+    });
+    at(w, 5.6, () => win(w, '成功閃過所有紅光！'));
+  },
+  ai(w, p) { p.goal = dodgeGoal(w, p, false); p.ram = false; },
+});
+function slashHit(w, t) {
+  for (const p of w.players) if (p.alive && !p.cage && inTg(t, p.pos, 0.3)) {
+    p.hp -= 50; w.fx.push({ kind: 'hit', at: cp(p.pos), t: w.t, life: 0.4 });
+    if (p.you) fail(w, '被紅光擊中：高傷害並被控場');
+  }
+}
+
+def({
+  id: 'magnetic', phase: 2, zh: '磁能斬', en: 'Magnetic Slash',
+  brief: '前方扇形金光後緊接大範圍金圈，被金圈打到必死；看到扇形就先往外跑。',
+  steps: ['BOSS 先對前方放扇形金光，被打到會被拉回 BOSS 身邊。', '扇形結束後，馬上在 BOSS 周圍放超大範圍金圈。', '金圈傷害極高，被打到一定秒殺。', '看到第一段扇形時，全隊就要提前往外跑，準備躲第二段金圈。'],
+  fail: '被大範圍金圈打中：秒殺。',
+  task: '看到扇形金光就立刻往外跑，跑出大金圈的範圍。',
+  src: { b: '6:39', a: '6:18' },
+  setup(w) {
+    formation(w, 3.5);
+    at(w, 0.3, () => {
+      cast(w, '磁能斬', 'Magnetic Slash', 0.3, 2.2);
+      tg(w, { kind: 'sector', color: 'gold', c: v(0, 0), a: -90, half: 50, r: 12, t1: 2.2, onHit: (w, t) => {
+        for (const p of w.players) if (p.alive && inTg(t, p.pos, 0.2)) { knockTo(w, p, polar(1.6, angOf(p.pos)), 0.3); if (p.you) note(w, '被扇形金光拉回 BOSS 身邊！'); }
+      } });
+      say(w, 'BOSS 對前方放扇形金光', '現在就往外跑，下一段是大範圍金圈');
+    });
+    at(w, 2.2, () => {
+      cast(w, '磁能斬', 'Magnetic Slash', 2.2, 4.2);
+      tg(w, { kind: 'circle', color: 'gold', c: v(0, 0), r: 14, t1: 4.2, onHit: (w, t) => { for (const p of w.players) if (p.alive && inTg(t, p.pos)) kill(w, p, '被大範圍金圈秒殺'); } });
+      say(w, '大範圍金圈！', '跑出金圈外');
+    });
+    at(w, 5, () => win(w, '成功躲過磁能斬！'));
+  },
+  ai(w, p) { if (w.t >= 0.35) walkTo(p, mul(norm(p.pos), 15.5)); },
+});
+
+def({
+  id: 'compass', phase: 2, zh: '司南．黜', en: 'Compass – Banish',
+  brief: '三人被點名，讀條結束落下飛劍並留下永久力場；被點名的人跑到場邊集中，別放在雷電球旁。',
+  steps: ['BOSS 隨機點名三名玩家，腳下出現金圈。', '讀條結束後，在他們的位置落下飛劍，降低全隊攻擊力，並留下永久力場（靠近會被彈開）。', '被點名的三人第一時間跑到場地邊緣，盡量集中站在一起。', '千萬不要把力場放在雷電球旁邊，不然之後拿不到感電。', '遠程隊員負責把飛劍打掉，解除攻擊力降低。'],
+  fail: '力場蓋在雷電球旁：之後拿不到感電。力場留在場中：擋住隊伍走位。',
+  task: '你被點名：讀條結束前跑到場邊的集合點（兩顆雷電球中間），和其他被點名的人站在一起。',
+  src: { b: '6:58', a: '6:33' },
+  setup(w) {
+    formation(w, 6);
+    const M = w.f.M = [1, 4, 7], G = w.f.G = polar(17, 270);
+    at(w, 0.3, () => {
+      cast(w, '司南．黜', 'Compass – Banish', 0.3, 6.3);
+      M.forEach(i => mark(w, P(w, i), 'gold', 2.2));
+      say(w, '1、4、7 號被點名', '跑到場邊集中，遠離雷電球');
+      w.markers = [{ c: G, label: '集合點' }];
+    });
+    at(w, 6.3, () => {
+      w.tgs = w.tgs.filter(t => !t.mark);
+      for (const i of M) { const q = P(w, i); if (!q.alive) continue; w.swords.push({ c: cp(q.pos), hp: 100, max: 100 }); w.fields.push({ c: cp(q.pos), r: 3, owner: null, kind: 'compass' }); }
+      say(w, '飛劍落下，留下永久力場', '遠程隊員把飛劍打掉');
+      w.bars = [{ label: '全隊攻擊力', val: () => (w.swords.some(s => s.hp > 0) ? 70 : 100), max: 100, color: 'red', fmt: '%' }];
+      const yp = P(w, 1).pos, orbD = Math.min(...w.orbs.map(o => dist(o.pos, yp)));
+      if (orbD < 6) return fail(w, '你的力場蓋在雷電球旁邊：之後沒辦法進去拿感電');
+      if (len(yp) < 13.5) return fail(w, '你的力場留在場地中間：會擋住隊伍走位，要跑到場邊');
+      w.f.grouped = [4, 7].every(i => dist(P(w, i).pos, yp) < 6);
+    });
+  },
+  ai(w, p) {
+    const k = w.f.M.indexOf(p.id); if (k < 0 || w.t < 0.35 || w.swords.length) return;
+    walkTo(p, add(w.f.G, mul(perp(norm(w.f.G)), (k - 1) * 1.6)));
+  },
+  update(w, dt) {
+    if (!w.swords.length) return;
+    for (const s of w.swords) s.hp = Math.max(0, s.hp - 30 * dt);
+    if (w.swords.every(s => s.hp <= 0)) win(w, w.f.grouped ? '力場都集中在場邊，飛劍也打掉了！' : '力場在場邊，飛劍打掉了（下次可以和其他被點名的人站近一點）');
+  },
+});
+
+function rangedSetup(w) {
+  w.f.R = [1, 6, 7];
+  P(w, 1).st.orb = w.orbs[2]; P(w, 6).st.orb = w.orbs[1]; P(w, 7).st.orb = w.orbs[0];
+}
+const vertexOf = p => polar(9, angOf(p.orb.pos));
+
+def({
+  id: 'pull', phase: 2, zh: '萬磁天引', en: 'Universal Magnetic Pull',
+  brief: '鵬的大絕：三名高輸出遠程拿感電，在 BOSS 外圍拉成三角形，減緩充能並在時間內破盾。',
+  steps: ['BOSS 回到場中央開始充能，並套上護盾。', '派三名高輸出的遠程去碰雷電球，取得「感電」。', '三人以三角形站位把 BOSS 圍在中間，三條雷電連線會減緩 BOSS 充能。', '連線千萬不能碰到中間的近戰隊友，否則隊友受傷、BOSS 回盾。', '站開一點但別退太遠（連線有長度上限，也會吃不到補師群補），大約離 BOSS 9 公尺。', '感電的三人會得到大量增傷：在充能完成前打破護盾。'],
+  fail: '充能完成前沒打破護盾：團滅。',
+  task: '你是三名遠程之一：拿一顆雷電球的感電，站到你那一側的建議位置（離 BOSS 約 9 公尺）。',
+  src: { b: '7:33', a: '6:57' },
+  setup(w) {
+    formation(w, 6); rangedSetup(w);
+    at(w, 0.3, () => {
+      cast(w, '萬磁天引', 'Universal Magnetic Pull', 0.3, null); w.cast.prog = () => (w.f.charge || 0) / 100;
+      w.boss.shield = 220; w.f.charge = 0; w.f.on = true;
+      say(w, 'BOSS 回到場中央充能', '三名遠程去拿感電，圍成三角形');
+      w.markers = [90, 210, 330].map(a => ({ c: polar(9, a), label: '遠程站位' }));
+      w.bars = [{ label: 'BOSS 護盾', val: () => w.boss.shield, max: 220, color: 'gold', fmt: 'int' }, { label: '大招充能', val: () => w.f.charge, max: 100, color: 'red', fmt: '%' }];
+    });
+  },
+  ai(w, p) {
+    if (!w.f.on) return;
+    if (w.f.R.includes(p.id)) { if (!p.electrified) orbTask(w, p); else walkTo(p, vertexOf(p)); return; }
+    walkTo(p, polar(1.9, angOf(p.home)));
+  },
+  update(w, dt) {
+    if (!w.f.on) return;
+    const tri = w.tethers.length === 3;
+    w.f.charge += (tri ? 2.5 : 5.2) * dt;
+    let dps = 0;
+    for (const p of w.players) if (p.alive) dps += p.electrified ? (tri ? 3.5 : 1.5) : 0.9;
+    for (const t of w.tethers) for (const p of w.players) {
+      if (!p.alive || p.electrified || segInfo(p.pos, t.a.pos, t.b.pos).d >= 0.9) continue;
+      w.boss.shield = Math.min(220, w.boss.shield + 14 * dt); p.hp -= 10 * dt;
+      if (!w.f.warn || w.t - w.f.warn > 2) { w.f.warn = w.t; note(w, `雷電連線碰到 ${p.id} 號隊友：BOSS 回盾！`); }
+    }
+    w.boss.shield -= dps * dt;
+    if (w.boss.shield <= 0) { w.boss.shield = 0; w.f.on = false; win(w, '護盾打破！成功化解萬磁天引'); }
+    else if (w.f.charge >= 100) fail(w, '充能完成：團滅' + (tri ? '' : '。三角形連線沒拉起來，充能沒有被減速'));
+  },
+});
+
+def({
+  id: 'compass-x', phase: 2, zh: '司南．極', en: 'Compass – Extreme',
+  brief: '吸人＋金圈爆炸，接著四把司南劍要在 5 秒內一起擊破，最後連續五次全場金圈要靠補師群補撐過。',
+  steps: ['BOSS 在場中央放大範圍金圈，同時把附近的人往內吸。', '逆著吸力往外走，在讀條結束前離開金圈。', '爆炸後生成四把司南劍：四把要在 5 秒內全部擊破，否則先被打掉的劍會以半血復活。', '打掉劍之後，BOSS 連續放 5 次全場金圈：大家往補師身邊集中吃群補。'],
+  fail: '沒逃出金圈：重傷。劍沒同時擊破：劍復活、拖太久團滅。沒靠近補師：撐不過 5 次全場傷害。',
+  task: '先逆著吸力往外逃出金圈；再走到右下的司南劍旁邊（靠近就會自動攻擊）；最後跑到補師（10 號）身邊。',
+  src: { b: '8:15', a: '7:45' },
+  setup(w) {
+    formation(w, 4);
+    const A = [315, 45, 135, 225];
+    w.f.grp = { 1: 0, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3 };
+    at(w, 0.3, () => {
+      cast(w, '司南．極', 'Compass – Extreme', 0.3, 4.3); w.vortex = { r: 14, pull: 3.2 };
+      tg(w, { kind: 'circle', color: 'gold', c: v(0, 0), r: 10, t1: 4.3, onHit: (w, t) => {
+        w.vortex = null;
+        for (const p of w.players) if (p.alive && inTg(t, p.pos)) { p.hp -= 70; w.fx.push({ kind: 'hit', at: cp(p.pos), t: w.t, life: 0.4 }); if (p.you) note(w, '被金圈炸到，HP 剩很少！'); }
+      } });
+      say(w, 'BOSS 把人往內吸，準備爆炸', '逆著吸力往外走，離開金圈');
+      w.bars = [{ label: '你的 HP', val: () => Math.max(0, P(w, 1).hp), max: 100, color: 'jade', fmt: 'int' }];
+    });
+    at(w, 4.8, () => {
+      w.swords = A.map(a => ({ c: polar(12, a), hp: 100, max: 100, deadT: null }));
+      w.f.sw = true;
+      say(w, '四把司南劍出現', '四把要在 5 秒內一起擊破；站在劍旁邊就會自動攻擊');
+      w.markers = [{ c: polar(12, 315), label: '你的劍' }];
+      tg(w, { kind: 'circle', color: 'green', r: 6, follow: P(w, 10), aura: true });
+      w.bars.push({ label: '已擊破的劍', val: () => w.swords.filter(s => s.hp <= 0).length, max: 4, color: 'gold', fmt: 'n/4' });
+    });
+    w.f.healT = 5.6;
+  },
+  ai(w, p) {
+    if (w.t < 0.35) return;
+    if (!w.f.sw) { walkTo(p, mul(norm(p.pos), 11.8)); return; }
+    if (p.id === 10) { walkTo(p, polar(7, -45)); return; }
+    if (!w.f.aoe) { const s = w.swords[w.f.grp[p.id]]; walkTo(p, add(s.c, mul(norm(sub(v(0, 0), s.c)), 1.6))); return; }
+    walkTo(p, add(P(w, 10).pos, polar(1.6, p.id * 36)));
+  },
+  update(w, dt) {
+    if (w.t >= w.f.healT) {
+      w.f.healT += 1.6;
+      const h = P(w, 10);
+      if (w.f.sw && h.alive) for (const p of w.players) if (p.alive && dist(p.pos, h.pos) <= 6) p.hp = Math.min(100, p.hp + 40);
+    }
+    if (!w.f.sw || w.f.aoe) return;
+    const alive = w.swords.filter(s => s.hp > 0);
+    const maxHp = Math.max(0, ...alive.map(s => s.hp));
+    w.swords.forEach((s, i) => {
+      if (s.hp <= 0) return;
+      let dmg = 0;
+      for (const p of w.players) {
+        if (!p.alive || p.id === 10 || dist(p.pos, s.c) > 2.8) continue;
+        if (p.ai && w.f.grp[p.id] === i && i !== 0 && s.hp < maxHp - 3) continue;
+        if (p.ai && w.mode === 'play' && i !== 0 && s.hp < w.swords[0].hp - 3) continue;
+        dmg += 12;
+      }
+      s.hp = Math.max(0, s.hp - dmg * dt);
+      if (s.hp <= 0) s.deadT = w.t;
+    });
+    const dead = w.swords.filter(s => s.hp <= 0);
+    if (dead.length === 4) {
+      w.f.aoe = true;
+      say(w, '劍全部擊破！BOSS 連放五次全場金圈', '往補師（10 號）身邊集中吃群補');
+      for (let k = 0; k < 5; k++) at(w, w.t + 1 + k * 1.6, () => {
+        tg(w, { kind: 'circle', color: 'gold', c: v(0, 0), r: 20, t0: w.t, t1: w.t + 0.01, onHit: (w) => {
+          for (const p of w.players) if (p.alive) { p.hp -= 35; if (p.hp <= 0) kill(w, p, '撐不過全場金圈'); }
+        } });
+      });
+      at(w, w.t + 1 + 4 * 1.6 + 0.5, () => win(w, '撐過五次全場金圈，司南．極化解！'));
+      w.f.healT = w.t + 1.3;
+      return;
+    }
+    const first = dead.reduce((m, s) => (m && m.deadT < s.deadT ? m : s), null);
+    if (first && w.t - first.deadT > 5) { first.hp = 50; first.deadT = null; note(w, '超過 5 秒：先被打掉的劍半血復活！'); }
+    if (w.t > 30) fail(w, '四把劍沒有在時間內一起擊破：團滅');
+  },
+});
+
+def({
+  id: 'cage-link', phase: 2, zh: '牢籠．聯．浮', en: 'Cage – Link – Float',
+  brief: '三人被關在空中牢籠；另外三人拿感電圍成三角形，同時跳起來讓三條連線一次碰到三個牢籠。',
+  steps: ['BOSS 點名三名玩家，把他們移到固定位置並困在半空中的牢籠。', '另外三名隊員去碰雷電球，取得「感電」。', '三人站成三角形，讓三條雷電連線各穿過一個牢籠下方。', '三人同時跳起來，讓連線一次碰到所有牢籠才算成功。'],
+  fail: '沒有同時碰到三個牢籠，時間到被困的隊友陣亡。',
+  task: '拿感電後站到你那一側的建議位置，三人都就位時按空白鍵跳，隊友會跟你同時跳。',
+  src: { b: '8:47', a: '8:51' },
+  setup(w) {
+    formation(w, 6); rangedSetup(w);
+    const C = [2, 5, 8];
+    at(w, 0.3, () => { cast(w, '牢籠．聯．浮', 'Cage – Link – Float', 0.3, 2.8); C.forEach(i => mark(w, P(w, i))); say(w, '2、5、8 號被點名', '三名遠程去拿感電'); });
+    at(w, 2.8, () => {
+      w.tgs = w.tgs.filter(t => !t.mark);
+      w.f.cages = C.map((i, k) => makeCage(w, P(w, i), polar(4.5, [30, 150, 270][k]), true));
+      w.f.dl = w.t + 20;
+      w.markers = [90, 210, 330].map(a => ({ c: polar(9, a), label: '' }));
+      say(w, '三人被困在空中', '三人站好三角形後一起跳');
+      w.bars = [{ label: '救援倒數', val: () => Math.max(0, w.f.dl - w.t), max: 20, color: 'red', fmt: 's' }];
+    });
+  },
+  ai(w, p) {
+    if (!w.f.R.includes(p.id)) return;
+    if (!p.electrified) { orbTask(w, p); return; }
+    walkTo(p, vertexOf(p));
+    if (w.mode === 'demo' && p.id === 1 && w.f.cages) {
+      const ready = w.f.R.every(i => { const q = P(w, i); return q.electrified && dist(q.pos, vertexOf(q)) < 0.5 && q.y === 0; });
+      if (!ready) w.f.readyT = null; else if (!w.f.readyT) w.f.readyT = w.t;
+      if (ready && w.t - w.f.readyT > 1 && w.t - (w.f.jt || -9) > 1.4) { w.f.jt = w.t; w.f.R.forEach(i => act(w, P(w, i), 'jump')); }
+    }
+  },
+  onJump(w, p) {
+    if (w.mode !== 'play' || !p.you) return;
+    for (const i of [6, 7]) { const q = P(w, i); if (q.electrified && dist(q.pos, vertexOf(q)) < 1.2) act(w, q, 'jump'); }
+  },
+  update(w) {
+    const cs = w.f.cages; if (!cs) return;
+    for (const c of cs) if (cageTouched(w, c)) c.touchT = w.t;
+    if (cs.every(c => w.t - c.touchT < 0.6)) { cs.forEach(c => freeCage(w, c)); w.f.cages = null; win(w, '三條連線同時碰到三個牢籠，全部救出！'); return; }
+    if (w.t > w.f.dl) { cs.forEach(c => kill(w, c.p, '困在牢籠裡')); fail(w, '沒有同時碰到三個牢籠：被困的隊友陣亡'); }
+  },
+});
+
+return { MECHS, create, step, polar, angOf, inTg, tgCenter, AR, DEFLECT_WIN };
+})();
+/*SIM-END*/
+
+</script>
+<script>
+const VIEW = (() => {
+  const COL = { gold: 0xf2c14e, red: 0xff5a52, green: 0x52d68a, cyan: 0x6fe3f0 };
+  const ROLEC = { you: 0xf2c14e, tank: 0x5b8def, melee: 0xe07a5f, ranged: 0xb197fc, healer: 0x63d297 };
+  let R, scene, cam, dyn, host, maps, arenaKey = '', clock = 0, ok = true;
+  const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), UP = new THREE.Vector3(0, 1, 0);
+  const texCache = new Map();
+
+  function init(el) {
+    host = el;
+    try { R = new THREE.WebGLRenderer({ antialias: true }); } catch (e) { ok = false; el.insertAdjacentHTML('afterbegin', '<p style="color:#fff;padding:24px">這個瀏覽器無法啟用 WebGL，請換一個瀏覽器開啟。</p>'); return false; }
+    R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    el.prepend(R.domElement);
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b1012);
+    scene.fog = new THREE.Fog(0x0b1012, 60, 110);
+    cam = new THREE.PerspectiveCamera(40, 1.6, 0.5, 200);
+    scene.add(new THREE.HemisphereLight(0xe6eeff, 0x2a2218, 0.85));
+    const d = new THREE.DirectionalLight(0xffffff, 0.75); d.position.set(-12, 30, 18); scene.add(d);
+    dyn = new THREE.Group(); scene.add(dyn);
+    resize();
+    new ResizeObserver(resize).observe(el);
+    return true;
+  }
+  function resize() {
+    if (!R) return;
+    const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+    R.setSize(w, h, false);
+    cam.aspect = w / h; cam.updateProjectionMatrix();
+    fitCamera(w < 640 ? 0.66 : 0.74);
+  }
+  const FIT_PTS = [];
+  for (let i = 0; i < 32; i++) {
+    const a = i / 32 * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+    FIT_PTS.push(new THREE.Vector3(c * 20.9, 0, s * 20.9), new THREE.Vector3(c * 19.5, 3.2, s * 19.5));
+  }
+  FIT_PTS.push(new THREE.Vector3(0, 4.6, 0));
+  function fitCamera(bottom) {
+    const dir = new THREE.Vector3(0, 36, 25).normalize(), v = new THREE.Vector3();
+    const fits = (d, zc) => {
+      cam.position.set(0, 0, zc).addScaledVector(dir, d); cam.lookAt(0, 0, zc); cam.updateMatrixWorld();
+      for (const p of FIT_PTS) { v.copy(p).project(cam); if (Math.abs(v.x) > 0.96 || v.y > 0.8 || v.y < -bottom) return false; }
+      return true;
+    };
+    let best = null;
+    for (let zc = -2; zc <= 6; zc += 0.5) {
+      let lo = 10, hi = 260;
+      if (!fits(hi, zc)) continue;
+      for (let k = 0; k < 26; k++) { const m = (lo + hi) / 2; if (fits(m, zc)) hi = m; else lo = m; }
+      if (!best || hi < best.d) best = { d: hi, zc };
+    }
+    if (!best) best = { d: 60, zc: 2 };
+    fits(best.d, best.zc);
+    scene.fog.near = best.d + 20; scene.fog.far = best.d + 90;
+  }
+
+  function mat(color, o = {}) { return new THREE.MeshLambertMaterial(Object.assign({ color }, o)); }
+  function basic(color, o = {}) { return new THREE.MeshBasicMaterial(Object.assign({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide }, o)); }
+  function textTex(text, fg = '#fff', bg = 'rgba(8,12,14,.78)') {
+    const key = text + fg + bg; if (texCache.has(key)) return texCache.get(key);
+    const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+    const g = c.getContext('2d');
+    g.font = '700 54px "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif';
+    const w = Math.min(248, g.measureText(text).width + 36);
+    g.fillStyle = bg; const x = (256 - w) / 2; g.beginPath();
+    if (g.roundRect) g.roundRect(x, 12, w, 72, 30); else g.rect(x, 12, w, 72);
+    g.fill();
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 50);
+    const t = new THREE.CanvasTexture(c); texCache.set(key, t); return t;
+  }
+  function label(text, fg, bg, s = 1) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTex(text, fg, bg), depthTest: false, transparent: true }));
+    sp.scale.set(2.6 * s, 0.975 * s, 1); sp.renderOrder = 10; sp.userData.text = text; return sp;
+  }
+  function setLabel(sp, text, fg, bg) { if (sp.userData.text === text) return; sp.material.map = textTex(text, fg, bg); sp.userData.text = text; }
+
+  function floorTexture(kind) {
+    const c = document.createElement('canvas'); c.width = c.height = 1024;
+    const g = c.getContext('2d'), m = 512;
+    if (kind === 'wayfarer') {
+      const gr = g.createRadialGradient(m, m, 40, m, m, 512); gr.addColorStop(0, '#5a4733'); gr.addColorStop(1, '#2e251b');
+      g.fillStyle = gr; g.fillRect(0, 0, 1024, 1024);
+      let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+      for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${rnd() > .5 ? '210,190,150' : '30,22,14'},${0.05 + rnd() * 0.08})`; g.beginPath(); g.ellipse(rnd() * 1024, rnd() * 1024, 10 + rnd() * 50, 6 + rnd() * 26, rnd() * 3, 0, 7); g.fill(); }
+      g.strokeStyle = 'rgba(240,220,180,.16)'; g.lineWidth = 3;
+      for (const r of [130, 260, 390]) { g.beginPath(); g.arc(m, m, r, 0, 7); g.stroke(); }
+    } else {
+      const gr = g.createRadialGradient(m, m, 40, m, m, 512); gr.addColorStop(0, '#24453f'); gr.addColorStop(1, '#10201d');
+      g.fillStyle = gr; g.fillRect(0, 0, 1024, 1024);
+      g.strokeStyle = 'rgba(160,230,210,.22)'; g.lineWidth = 3;
+      for (const r of [90, 200, 330, 470]) { g.beginPath(); g.arc(m, m, r, 0, 7); g.stroke(); }
+      for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12; g.beginPath(); g.moveTo(m + Math.cos(a) * 200, m + Math.sin(a) * 200); g.lineTo(m + Math.cos(a) * 470, m + Math.sin(a) * 470); g.stroke(); }
+      g.strokeRect(m - 140, m - 140, 280, 280);
+      g.fillStyle = 'rgba(190,240,225,.30)'; g.font = '700 54px "Noto Serif TC", serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      '乾兌離震巽坎艮坤'.split('').forEach((ch, i) => { const a = -Math.PI / 2 + i * Math.PI / 4; g.fillText(ch, m + Math.cos(a) * 400, m + Math.sin(a) * 400); });
+    }
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+
+  function clearGroup(gp) {
+    gp.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && !o.material.map) o.material.dispose(); });
+    while (gp.children.length) gp.remove(gp.children[0]);
+  }
+
+  function build(w) {
+    if (!ok) return;
+    clearGroup(dyn);
+    maps = { players: new Map(), umbs: new Map(), tgs: new Map(), fx: new Map(), cages: new Map(), fields: new Map(), swords: new Map(), markers: new Map(), orbs: new Map() };
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(20.6, 96), new THREE.MeshLambertMaterial({ map: floorTexture(w.arena) }));
+    floor.rotation.x = -Math.PI / 2; dyn.add(floor);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(20.6, 0.3, 8, 120), mat(w.arena === 'peng' ? 0x3c6a62 : 0x6b5537));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.1; dyn.add(rim);
+    const boss = new THREE.Group();
+    if (w.arena === 'wayfarer') {
+      const robe = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.6, 16), mat(0x3b4552)); robe.position.y = 1.3; boss.add(robe);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 10), mat(0xe8dcc8)); head.position.y = 2.85; boss.add(head);
+      const hat = new THREE.Mesh(new THREE.ConeGeometry(1.15, 0.45, 18), mat(0x8c7a5b)); hat.position.y = 3.3; boss.add(hat);
+    } else {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1, 2.6, 14), mat(0x8a7a55)); body.position.y = 1.3; boss.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 10), mat(0xd8c9a3)); head.position.y = 2.9; boss.add(head);
+      for (const s of [-1, 1]) { const wg = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 1.1), mat(0xbfae84)); wg.position.set(s * 2, 2.4, 0.2); wg.rotation.z = s * 0.45; boss.add(wg); }
+    }
+    const shield = new THREE.Mesh(new THREE.SphereGeometry(2.3, 24, 16), basic(COL.gold, { opacity: 0.16 })); shield.position.y = 1.6; shield.visible = false; boss.add(shield);
+    const bl = label(w.boss.name, '#ffe7a8', 'rgba(60,40,8,.85)', 1); bl.position.y = 4.3; boss.add(bl);
+    boss.userData.shield = shield; dyn.add(boss); maps.boss = boss;
+    const dome = new THREE.Group();
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 6, 72, 1, true), basic(0xdfe8ec, { opacity: 0.1 })); wall.position.y = 3; dome.add(wall);
+    const streak = new THREE.Mesh(new THREE.CylinderGeometry(9.9, 9.9, 6, 36, 1, true), new THREE.MeshBasicMaterial({ color: 0xdfe8ec, wireframe: true, transparent: true, opacity: 0.08 })); streak.position.y = 3; dome.add(streak);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(9.85, 10.15, 96), basic(0xeef4f6, { opacity: 0.55 })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; dome.add(ring);
+    dome.userData.streak = streak; dome.visible = false; dyn.add(dome); maps.dome = dome;
+    const vortex = new THREE.Mesh(new THREE.RingGeometry(1, 14, 64, 1, 0, Math.PI * 1.6), basic(0xc9b6ff, { opacity: 0.12 }));
+    vortex.rotation.x = -Math.PI / 2; vortex.position.y = 0.05; vortex.visible = false; dyn.add(vortex); maps.vortex = vortex;
+    maps.tethers = [0, 1, 2].map(() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1, 6), basic(COL.cyan, { opacity: 0.95 })); m.visible = false; dyn.add(m); return m; });
+    maps.clone = null;
+  }
+
+  function mkPlayer(p) {
+    const g = new THREE.Group();
+    const col = ROLEC[p.role];
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 1.2, 12), mat(col)); body.position.y = 0.6;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8), mat(0xf1e6d2)); head.position.y = 1.45;
+    const figure = new THREE.Group(); figure.add(body, head); g.add(figure);
+    const aura = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 10), basic(COL.cyan, { opacity: 0.22 })); aura.position.y = 0.8; aura.visible = false; g.add(aura);
+    if (p.you) { const r = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.95, 28), basic(COL.gold, { opacity: 0.95 })); r.rotation.x = -Math.PI / 2; r.position.y = 0.06; g.add(r); g.userData.ring = r; }
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), basic(0x000000, { opacity: 0.35 })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03; dyn.add(shadow);
+    const lb = label(p.you ? '你' : String(p.id), p.you ? '#1b1404' : '#fff', p.you ? 'rgba(242,193,78,.95)' : 'rgba(8,12,14,.78)', 0.62); lb.position.y = 2.95; g.add(lb);
+    Object.assign(g.userData, { figure, body, aura, lb, shadow, col });
+    return g;
+  }
+  function mkUmbrella(u) {
+    const g = new THREE.Group();
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.3, 6), mat(0x6b4f2d)); pole.position.y = 1.15; g.add(pole);
+    const canopy = new THREE.Group();
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(1.45, 0.6, 12, 1, true), mat(0xefe7d4, { side: THREE.DoubleSide, transparent: true, opacity: 0.78 })); canopy.add(cone);
+    const stripe = new THREE.Mesh(new THREE.ConeGeometry(1.47, 0.61, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xb8433a, wireframe: true })); canopy.add(stripe);
+    canopy.position.y = 2.35; g.add(canopy);
+    g.userData.canopy = canopy; return g;
+  }
+  function shapePts(s, scale) {
+    const c = s.c, P = SIM.polar;
+    if (s.kind === 'circle') { const pts = []; for (let i = 0; i <= 56; i++) { const q = P(s.r * scale, i * 360 / 56); pts.push([c.x + q.x, c.z + q.z]); } return { hub: [c.x, c.z], rim: pts, outline: pts }; }
+    if (s.kind === 'sector') { const pts = []; for (let i = 0; i <= 28; i++) { const q = P(s.r * scale, s.a - s.half + i * 2 * s.half / 28); pts.push([c.x + q.x, c.z + q.z]); } return { hub: [c.x, c.z], rim: pts, outline: [[c.x, c.z], ...pts, [c.x, c.z]] }; }
+    const d = P(1, s.a), pp = { x: -d.z, z: d.x }, L = s.len * scale, hw = s.w / 2;
+    const k = [[c.x + pp.x * hw, c.z + pp.z * hw], [c.x + d.x * L + pp.x * hw, c.z + d.z * L + pp.z * hw], [c.x + d.x * L - pp.x * hw, c.z + d.z * L - pp.z * hw], [c.x - pp.x * hw, c.z - pp.z * hw]];
+    k.push(k[0]);
+    return { hub: [c.x + d.x * L / 2, c.z + d.z * L / 2], rim: k, outline: k };
+  }
+  function fanGeom(sh, y) {
+    const a = [];
+    for (let i = 0; i < sh.rim.length - 1; i++) a.push(sh.hub[0], y, sh.hub[1], sh.rim[i][0], y, sh.rim[i][1], sh.rim[i + 1][0], y, sh.rim[i + 1][1]);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); return g;
+  }
+  function lineGeom(pts, y) { return new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p[0], y, p[1]))); }
+  function mkTg() {
+    const g = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BufferGeometry(), basic(0xffffff, { opacity: 0.13 }));
+    const fill = new THREE.Mesh(new THREE.BufferGeometry(), basic(0xffffff, { opacity: 0.32 }));
+    const line = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 }));
+    g.add(base, fill, line); g.userData = { base, fill, line }; return g;
+  }
+  function setGeom(m, g) { m.geometry.dispose(); m.geometry = g; }
+  function keyed(map, items, create, update) {
+    const seen = new Set();
+    for (const it of items) {
+      let m = map.get(it);
+      if (!m) { m = create(it); map.set(it, m); dyn.add(m); }
+      seen.add(it); update(it, m);
+    }
+    for (const [k, m] of map) if (!seen.has(k)) { dyn.remove(m); if (m.userData.shadow) dyn.remove(m.userData.shadow); clearGroup(m); map.delete(k); }
+  }
+
+  function sync(w, dt) {
+    if (!ok || !w || !maps) return;
+    clock += dt;
+    const t = w.t;
+    keyed(maps.players, w.players, mkPlayer, (p, g) => {
+      const u = g.userData, ridingY = p.riding ? 0.55 + Math.sin(clock * 4 + p.id) * 0.08 : 0;
+      g.position.set(p.pos.x, p.y + ridingY, p.pos.z);
+      u.shadow.position.set(p.pos.x, 0.03, p.pos.z); u.shadow.visible = p.alive;
+      u.figure.rotation.x = p.alive ? 0 : -Math.PI / 2; u.figure.position.y = p.alive ? 0 : 0.4;
+      u.body.material.color.setHex(p.alive ? u.col : 0x555a5e);
+      u.aura.visible = p.alive && p.electrified; if (u.aura.visible) u.aura.scale.setScalar(1 + Math.sin(clock * 12) * 0.06);
+      const txt = p.you ? (p.exhausted ? '你·竭' : '你') : (p.exhausted ? p.id + '·竭' : String(p.id));
+      setLabel(u.lb, txt, p.you ? '#1b1404' : '#fff', p.you ? 'rgba(242,193,78,.95)' : 'rgba(8,12,14,.78)');
+      u.lb.position.y = p.alive ? 2.95 : 1.2;
+    });
+    keyed(maps.umbs, w.umbrellas.filter(u => u.alive), mkUmbrella, (u, g) => {
+      g.position.set(u.pos.x, u.rider ? 0.55 + Math.sin(clock * 4 + u.id) * 0.08 : 0, u.pos.z);
+      g.userData.canopy.rotation.y += dt * (u.rider || u.spin ? 5 : 0.3);
+    });
+    keyed(maps.orbs, w.orbs, () => {
+      const g = new THREE.Group();
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.62, 18, 12), new THREE.MeshBasicMaterial({ color: COL.cyan })); s.position.y = 1.2; g.add(s);
+      const h = new THREE.Mesh(new THREE.SphereGeometry(1.05, 18, 12), basic(COL.cyan, { opacity: 0.18 })); h.position.y = 1.2; g.add(h);
+      const b = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.45, 32), basic(COL.cyan, { opacity: 0.5 })); b.rotation.x = -Math.PI / 2; b.position.y = 0.05; g.add(b);
+      g.userData = { s, h }; return g;
+    }, (o, g) => { g.position.set(o.pos.x, Math.sin(clock * 2 + o.pos.x) * 0.15, o.pos.z); g.userData.h.scale.setScalar(1 + Math.sin(clock * 6) * 0.08); g.userData.s.material.color.setHex(o.holder ? 0x3c7b84 : COL.cyan); });
+
+    const b = maps.boss; b.position.set(w.boss.pos.x, 0, w.boss.pos.z); b.userData.shield.visible = w.boss.shield > 0;
+    maps.dome.visible = !!w.dome; if (w.dome) maps.dome.userData.streak.rotation.y += dt * 1.6;
+    maps.vortex.visible = !!w.vortex; if (w.vortex) maps.vortex.rotation.z += dt * 2.5;
+
+    keyed(maps.tgs, w.tgs, mkTg, (tg, g) => {
+      const s = { kind: tg.kind, c: SIM.tgCenter(tg), r: tg.r, a: tg.a, half: tg.half, len: tg.len, w: tg.w };
+      const y = 0.05 + (tg.id % 9) * 0.006;
+      const col = COL[tg.color] || COL.gold, u = g.userData;
+      const prog = tg.t1 === Infinity ? 1 : Math.max(0, Math.min(1, (t - tg.t0) / (tg.t1 - tg.t0)));
+      const full = shapePts(s, 1);
+      setGeom(u.base, fanGeom(full, y)); setGeom(u.fill, fanGeom(shapePts(s, Math.max(0.001, prog)), y + 0.002)); setGeom(u.line, lineGeom(full.outline, y + 0.004));
+      u.base.material.color.setHex(col); u.fill.material.color.setHex(col); u.line.material.color.setHex(col);
+      const persist = tg.t1 === Infinity;
+      u.fill.material.opacity = persist ? (tg.mark ? 0.18 + Math.sin(clock * 6) * 0.06 : 0.12) : 0.34;
+      u.base.material.opacity = persist ? 0.06 : 0.12;
+    });
+    keyed(maps.fx, w.fx, f => {
+      const g = new THREE.Group();
+      if (f.kind === 'flash') { const m = new THREE.Mesh(fanGeom(shapePts(f.shape, 1), 0.09), basic(COL[f.color] || COL.gold, { opacity: 0.6 })); g.add(m); g.userData.m = m; }
+      else if (f.kind === 'ghost') { const m = new THREE.Mesh(new THREE.ConeGeometry(1, 2.6, 14), basic(0xe8eef2, { opacity: 0.5 })); m.position.set(f.at.x, 1.3, f.at.z); g.add(m); g.userData.m = m; }
+      else {
+        const colr = { deflect: COL.gold, zap: COL.cyan, hit: COL.red, break: 0xffffff, clash: 0xffffff }[f.kind] || 0xffffff;
+        const m = new THREE.Mesh(new THREE.RingGeometry(0.6, 0.95, 32), basic(colr, { opacity: 0.9 })); m.rotation.x = -Math.PI / 2; g.add(m); g.userData.m = m;
+      }
+      return g;
+    }, (f, g) => {
+      const k = Math.min(1, (t - f.t) / f.life), m = g.userData.m;
+      m.material.opacity = (1 - k) * (f.kind === 'flash' ? 0.55 : 0.9);
+      if (f.kind === 'flash' || f.kind === 'ghost') return;
+      const at = f.p ? f.p.pos : f.at, y = f.p ? f.p.y + 0.15 : 0.12;
+      m.position.set(at.x, y, at.z); m.scale.setScalar(1 + k * (f.kind === 'clash' ? 4 : 2.2));
+    });
+    keyed(maps.cages, w.cages, () => {
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1.25, 1), new THREE.MeshBasicMaterial({ color: 0xd2a8ff, wireframe: true }));
+      return m;
+    }, (c, m) => { m.position.set(c.c.x, c.y + 0.9, c.c.z); m.rotation.y += dt * 1.2; m.rotation.x += dt * 0.5; });
+    keyed(maps.fields, w.fields, f => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(f.r, f.r, f.kind === 'cage' ? 5 : 1.2, 40, 1, true), basic(f.kind === 'cage' ? 0xb98cff : 0xf2a14e, { opacity: 0.16 }));
+      return m;
+    }, (f, m) => { m.position.set(f.c.x, f.kind === 'cage' ? 2.5 : 0.6, f.c.z); });
+    keyed(maps.swords, w.swords.filter(s => s.hp > 0), () => {
+      const g = new THREE.Group();
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.8, 0.55), mat(0xe9d69a)); blade.position.y = 1.3; blade.rotation.z = 0.12; g.add(blade);
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.18, 0.3), mat(0x8c6a2c)); guard.position.y = 2.6; g.add(guard);
+      const bg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x111111, depthTest: false })); bg.scale.set(2.2, 0.26, 1); bg.position.y = 3.4; bg.renderOrder = 9; g.add(bg);
+      const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xff6b63, depthTest: false })); fg.center.set(0, 0.5); fg.scale.set(2.2, 0.2, 1); fg.position.set(-1.1, 3.4, 0); fg.renderOrder = 10; g.add(fg);
+      g.userData.fg = fg; return g;
+    }, (s, g) => { g.position.set(s.c.x, 0, s.c.z); g.userData.fg.scale.x = Math.max(0.001, 2.2 * s.hp / s.max); });
+    keyed(maps.markers, w.markers, mk => {
+      const g = new THREE.Group();
+      const r = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.78, 28), basic(0xffffff, { opacity: 0.55 })); r.rotation.x = -Math.PI / 2; r.position.y = 0.07; g.add(r);
+      if (mk.label) { const l = label(mk.label, '#fff', 'rgba(8,12,14,.6)', 0.55); l.position.y = 0.9; g.add(l); }
+      g.userData.r = r; return g;
+    }, (mk, g) => { g.position.set(mk.c.x, 0, mk.c.z); g.userData.r.material.opacity = 0.35 + Math.sin(clock * 4) * 0.2; });
+
+    const c = w.clone;
+    if (c && !maps.clone) {
+      const g = new THREE.Group();
+      const m = new THREE.Mesh(new THREE.ConeGeometry(1, 2.6, 14), basic(0xdce6ea, { opacity: 0.55 })); m.position.y = 1.3; g.add(m);
+      const l = label('分身', '#fff', 'rgba(8,12,14,.7)', 0.6); l.position.y = 3.2; g.add(l);
+      g.userData = { m, l }; dyn.add(g); maps.clone = g;
+    }
+    if (maps.clone) {
+      const g = maps.clone; g.visible = !!c && !c.dead;
+      if (c) { g.position.set(c.pos.x, 0, c.pos.z); g.userData.m.material.color.setHex(c.broken ? 0x8a8f93 : 0xdce6ea); setLabel(g.userData.l, c.broken ? '氣竭' : '分身', '#fff', c.broken ? 'rgba(150,40,30,.85)' : 'rgba(8,12,14,.7)'); }
+    }
+
+    maps.tethers.forEach((m, i) => {
+      const te = w.tethers[i]; m.visible = !!te; if (!te) return;
+      const a = new THREE.Vector3(te.a.pos.x, te.a.y + 0.9, te.a.pos.z), bb = new THREE.Vector3(te.b.pos.x, te.b.y + 0.9, te.b.pos.z);
+      const d = bb.clone().sub(a), L = d.length();
+      m.position.copy(a).addScaledVector(d, 0.5);
+      m.scale.set(1 + Math.random() * 0.8, L, 1 + Math.random() * 0.8);
+      m.quaternion.setFromUnitVectors(UP, d.normalize());
+      m.material.opacity = 0.7 + Math.random() * 0.3;
+    });
+    R.render(scene, cam);
+  }
+  function pick(cx, cy) {
+    if (!ok) return null;
+    const r = R.domElement.getBoundingClientRect();
+    ray.setFromCamera({ x: ((cx - r.left) / r.width) * 2 - 1, y: -((cy - r.top) / r.height) * 2 + 1 }, cam);
+    const p = new THREE.Vector3();
+    return ray.ray.intersectPlane(plane, p) ? { x: p.x, z: p.z } : null;
+  }
+  return { init, build, sync, pick };
+})();
+
+(() => {
+  const $ = id => document.getElementById(id);
+  const M = SIM.MECHS;
+  const PH = { 1: { zh: '第一階段 · 天涯客', en: 'Wayfarer', rule: '圍繞「傘」：互動上傘、撞傘、擋招。' }, 2: { zh: '第二階段 · 鵬', en: 'Peng', rule: '場上三顆雷電球，互動取得「感電」（最多 3 人）；感電的人靠近會自動連出雷電。' } };
+  const VID = { b: 'https://www.youtube.com/watch?v=pFW2LoaeXLo', a: 'https://www.youtube.com/watch?v=iDlaaIYWvwk' };
+  const toSec = s => s.split(':').reduce((a, x) => a * 60 + Number(x), 0);
+  let cur = M[0], world = null, mode = 'demo', paused = false, speed = 1, shown = false;
+  const input = { dir: null, actions: [], click: null };
+  const held = new Set();
+
+  const idx = $('index'), sel = $('msel');
+  for (const ph of [1, 2]) {
+    const list = M.filter(m => m.phase === ph);
+    idx.insertAdjacentHTML('beforeend', `<h2>${PH[ph].zh}<span>${PH[ph].en}</span></h2><p class="rule">${PH[ph].rule}</p><ol>${list.map((m, i) => `<li><button type="button" data-id="${m.id}"><span class="n">${i + 1}</span><span class="zh">${m.zh}</span><span class="en">${m.en}</span></button></li>`).join('')}</ol>`);
+    const og = document.createElement('optgroup'); og.label = `${PH[ph].zh} ${PH[ph].en}`;
+    list.forEach((m, i) => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${i + 1}. ${m.zh}  ${m.en}`; og.appendChild(o); });
+    sel.appendChild(og);
+  }
+  idx.addEventListener('click', e => { const b = e.target.closest('button[data-id]'); if (b) choose(b.dataset.id, 'demo'); });
+  sel.addEventListener('change', () => choose(sel.value, 'demo'));
+
+  function renderInfo() {
+    const m = cur, list = M.filter(x => x.phase === m.phase), n = list.indexOf(m) + 1;
+    $('tEyebrow').textContent = `${PH[m.phase].zh} ${PH[m.phase].en} · 機制 ${n}/${list.length}`;
+    $('tZh').textContent = m.zh; $('tEn').textContent = m.en;
+    $('sBrief').textContent = m.brief;
+    $('sSteps').innerHTML = m.steps.map(s => `<li>${s}</li>`).join('');
+    $('sFail').textContent = m.fail; $('sTask').textContent = m.task;
+    const src = [];
+    if (m.src.b) src.push(`<a href="${VID.b}&t=${toSec(m.src.b)}s" target="_blank" rel="noopener">SoMi 影片 ${m.src.b}</a>`);
+    if (m.src.a) src.push(`<a href="${VID.a}&t=${toSec(m.src.a)}s" target="_blank" rel="noopener">xKale 影片 ${m.src.a}</a>`);
+    $('sSrc').innerHTML = '影片出處：' + src.join(' · ');
+    idx.querySelectorAll('button[data-id]').forEach(b => b.setAttribute('aria-current', String(b.dataset.id === m.id)));
+    sel.value = m.id;
+  }
+  function choose(id, md) { cur = M.find(m => m.id === id) || M[0]; renderInfo(); start(md); try { localStorage.setItem('hc-sim-mech', cur.id); } catch (e) {} }
+  function start(md) {
+    mode = md; paused = false; shown = false;
+    world = SIM.create(cur, md, md === 'demo' ? 11 : (Math.random() * 1e9) | 0);
+    input.actions.length = 0; input.click = null;
+    VIEW.build(world);
+    $('result').hidden = true;
+    $('bDemo').setAttribute('aria-pressed', String(md === 'demo'));
+    $('bPlay').setAttribute('aria-pressed', String(md === 'play'));
+    $('bPause').textContent = '暫停';
+    $('modeTag').textContent = md === 'demo' ? '示範' : '實際操作';
+    $('modeTag').className = 'tag' + (md === 'play' ? ' play' : '');
+    $('touch').hidden = md !== 'play';
+    lastHud = {};
+    if (md === 'play') $('stage').focus({ preventScroll: true });
+  }
+
+  $('bDemo').onclick = () => start('demo');
+  $('bPlay').onclick = () => start('play');
+  $('bRestart').onclick = () => start(mode);
+  $('bPause').onclick = () => { paused = !paused; $('bPause').textContent = paused ? '繼續' : '暫停'; };
+  $('speed').onchange = e => { speed = Number(e.target.value); };
+  $('resRetry').onclick = () => start(mode);
+  $('resDemo').onclick = () => start('demo');
+  $('resPlay').onclick = () => start('play');
+  $('resNext').onclick = () => { const i = M.indexOf(cur); choose(M[(i + 1) % M.length].id, 'demo'); };
+
+  const ACTIONS = [
+    { id: 'up', label: '向上移動' }, { id: 'down', label: '向下移動' }, { id: 'left', label: '向左移動' }, { id: 'right', label: '向右移動' },
+    { id: 'interact', label: '互動（上傘／下傘／拿雷電球）' }, { id: 'jump', label: '跳' }, { id: 'deflect', label: '卸勢' }, { id: 'restart', label: '重來' },
+  ];
+  const DEFAULT_KEYS = { up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], interact: ['KeyE', 'KeyF'], jump: ['Space', null], deflect: ['KeyQ', null], restart: ['KeyR', null] };
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  const KEY_STATUS = '點一個按鍵格，再按下想用的鍵。Esc 取消，Backspace 清除該格。';
+  const NAMED = { Space: '空白', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', ShiftLeft: '左 Shift', ShiftRight: '右 Shift', ControlLeft: '左 Ctrl', ControlRight: '右 Ctrl', AltLeft: '左 Alt', AltRight: '右 Alt', MetaLeft: '左 ⌘', MetaRight: '右 ⌘', CapsLock: 'Caps', Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/' };
+  const copyKeys = k => JSON.parse(JSON.stringify(k));
+  let binds = loadBinds(), capture = null, swallowUp = null;
+  function loadBinds() {
+    try { const s = JSON.parse(localStorage.getItem('hc-sim-keys')); if (s && ACTIONS.every(a => Array.isArray(s[a.id]) && s[a.id].length === 2)) return s; } catch (e) {}
+    return copyKeys(DEFAULT_KEYS);
+  }
+  function saveBinds() { try { localStorage.setItem('hc-sim-keys', JSON.stringify(binds)); } catch (e) {} }
+  const actionOf = code => (ACTIONS.find(a => binds[a.id].includes(code)) || {}).id || null;
+  const labelOf = id => ACTIONS.find(a => a.id === id).label;
+  function keyName(code) {
+    if (!code) return '—';
+    if (NAMED[code]) return NAMED[code];
+    if (code.startsWith('Key')) return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code.startsWith('Numpad')) return '數字鍵 ' + code.slice(6);
+    return code;
+  }
+  function renderHint() {
+    const kb = c => `<kbd>${keyName(c)}</kbd>`, keysOf = id => binds[id].filter(Boolean);
+    const or = id => keysOf(id).length ? keysOf(id).map(kb).join(' ') : '<kbd>未設定</kbd>';
+    const dirs = ['up', 'left', 'down', 'right'];
+    const moves = [0, 1].map(i => dirs.map(id => binds[id][i]).filter(Boolean).map(kb).join('')).filter(Boolean);
+    $('keyHint').innerHTML = [
+      `<span>${moves.join(' 或 ') || '<kbd>未設定</kbd>'} 移動（也可以點地面）</span>`,
+      `<span>${or('interact')} 互動：上傘／下傘／拿雷電球</span>`,
+      `<span>${or('jump')} 跳</span>`, `<span>${or('deflect')} 卸勢</span>`, `<span>${or('restart')} 重來</span>`,
+    ].join('');
+  }
+  function renderKeymap(status, isNote) {
+    $('kGrid').innerHTML = '<span class="h">動作</span><span class="h">主要</span><span class="h">次要</span>' + ACTIONS.map(a => `<span>${a.label}</span>` + [0, 1].map(i => {
+      const c = binds[a.id][i], on = capture && capture.act === a.id && capture.slot === i;
+      return `<button type="button" class="kbtn${c ? '' : ' empty'}" data-act="${a.id}" data-slot="${i}" data-capturing="${on}" aria-label="${a.label}的${i ? '次要' : '主要'}按鍵：${c ? keyName(c) : '未設定'}">${on ? '按下新按鍵…' : keyName(c)}</button>`;
+    }).join('')).join('');
+    const st = $('kStatus'); st.textContent = status || KEY_STATUS; st.className = 'kstatus' + (isNote ? ' note' : '');
+    renderHint();
+  }
+  function endCapture(msg) {
+    const prev = capture; capture = null; renderKeymap(msg, !!msg);
+    if (prev) { const b = $('kGrid').querySelector(`[data-act="${prev.act}"][data-slot="${prev.slot}"]`); if (b) b.focus(); }
+  }
+  function assign(code) {
+    const { act, slot } = capture, owner = actionOf(code);
+    for (const a of ACTIONS) binds[a.id] = binds[a.id].map((c, i) => (c === code && !(a.id === act && i === slot) ? null : c));
+    binds[act][slot] = code; saveBinds();
+    endCapture(owner && owner !== act ? `「${keyName(code)}」改給「${labelOf(act)}」，已從「${labelOf(owner)}」移除。` : `「${labelOf(act)}」設為「${keyName(code)}」。`);
+  }
+  $('kGrid').addEventListener('click', e => {
+    const b = e.target.closest('.kbtn'); if (!b) return;
+    capture = { act: b.dataset.act, slot: Number(b.dataset.slot) };
+    held.clear(); renderKeymap('按下新按鍵…（Esc 取消，Backspace 清除）', true);
+    $('kGrid').querySelector('[data-capturing="true"]').focus();
+  });
+  $('kReset').onclick = () => { binds = copyKeys(DEFAULT_KEYS); saveBinds(); capture = null; renderKeymap('已恢復預設鍵位。', true); };
+  $('bKeys').onclick = () => {
+    const panel = $('keymap'); panel.hidden = !panel.hidden;
+    $('bKeys').setAttribute('aria-expanded', String(!panel.hidden));
+    capture = null; if (!panel.hidden) renderKeymap();
+  };
+
+  const live = () => mode === 'play' && world && !world.result && !paused;
+  addEventListener('keydown', e => {
+    if (capture) {
+      e.preventDefault(); e.stopPropagation();
+      if (e.code === 'Escape') return endCapture();
+      if (e.code === 'Backspace' || e.code === 'Delete') { binds[capture.act][capture.slot] = null; saveBinds(); return endCapture(`已清除「${labelOf(capture.act)}」的${capture.slot ? '次要' : '主要'}按鍵。`); }
+      if (e.code === 'Tab' || !e.code) return;
+      swallowUp = e.code;
+      return assign(e.code);
+    }
+    if (e.target.closest && e.target.closest('select, input, textarea')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const act = actionOf(e.code); if (!act) return;
+    if (DIRS[act]) { held.add(e.code); if (live()) e.preventDefault(); return; }
+    if (act === 'restart') { if (!e.repeat) start(mode); return; }
+    if (live()) { e.preventDefault(); if (!e.repeat) input.actions.push(act); }
+  }, true);
+  addEventListener('keyup', e => { held.delete(e.code); if (capture || e.code === swallowUp) { e.preventDefault(); swallowUp = null; } }, true);
+  addEventListener('blur', () => held.clear());
+  function keyDir() {
+    let x = 0, z = 0;
+    for (const c of held) { const d = DIRS[actionOf(c)]; if (d) { x += d[0]; z += d[1]; } }
+    if (!x && !z) return null;
+    const l = Math.hypot(x, z); return { x: x / l, z: z / l };
+  }
+  renderKeymap();
+  const stage = $('stage');
+  stage.addEventListener('pointerdown', e => {
+    if (e.target.closest('button')) return;
+    if (!live()) return;
+    const p = VIEW.pick(e.clientX, e.clientY);
+    if (p) { input.click = p; world.fx.push({ kind: 'deflect', at: p, t: world.t, life: 0.35, click: true }); }
+  });
+  $('touch').addEventListener('pointerdown', e => { const b = e.target.closest('button[data-a]'); if (!b) return; e.preventDefault(); if (live()) input.actions.push(b.dataset.a); });
+
+  let lastHud = {};
+  const setText = (el, key, val) => { if (lastHud[key] !== val) { lastHud[key] = val; el.textContent = val; } };
+  const setHTML = (el, key, val) => { if (lastHud[key] !== val) { lastHud[key] = val; el.innerHTML = val; } };
+  const COLV = { red: 'var(--hud-red)', gold: 'var(--hud-gold)', jade: 'var(--hud-jade)' };
+  function fmtBar(b, val) {
+    if (b.fmt === 's') return val.toFixed(1) + ' 秒';
+    if (b.fmt === '%') return Math.round(val) + '%';
+    if (b.fmt === 'int') return String(Math.round(val));
+    if (b.fmt && b.fmt.startsWith('n/')) return `${Math.round(val)}/${b.fmt.slice(2)}`;
+    return String(Math.round(val));
+  }
+  function hud() {
+    const w = world; if (!w) return;
+    const c = w.cast;
+    $('cast').hidden = !c;
+    if (c) {
+      setText($('castZh'), 'czh', c.zh); setText($('castEn'), 'cen', c.en);
+      const p = c.prog ? c.prog() : Math.max(0, Math.min(1, (w.t - c.t0) / (c.t1 - c.t0)));
+      $('castFill').style.width = (p * 100).toFixed(1) + '%';
+      $('castZone').hidden = !c.deflect;
+      if (c.deflect) $('castZone').style.width = (SIM.DEFLECT_WIN / (c.t1 - c.t0) * 100).toFixed(1) + '%';
+    }
+    setHTML($('bars'), 'bars', w.bars.map(b => { const val = Math.max(0, b.val()); return `<div class="bar"><header><span>${b.label}</span><b>${fmtBar(b, val)}</b></header><div class="track"><i style="width:${Math.min(100, val / b.max * 100).toFixed(1)}%;background:${COLV[b.color] || COLV.gold}"></i></div></div>`; }).join(''));
+    setText($('clock'), 'clk', w.t.toFixed(1) + ' 秒');
+    const you = w.players[0], ch = [];
+    if (!you.alive) ch.push('<span class="warn">倒地</span>');
+    if (you.riding) ch.push('<span>騎傘中</span>');
+    if (you.electrified) ch.push('<span class="zap">感電</span>');
+    if (you.exhausted) ch.push('<span class="warn">力竭</span>');
+    if (you.cage) ch.push('<span class="warn">被困</span>');
+    if (w.tgs.some(t => t.mark && t.follow === you)) ch.push('<span class="warn">被點名</span>');
+    if (you.y > 0.05) ch.push('<span>空中</span>');
+    if (you.hp < 100 && you.alive) ch.push(`<span>HP ${Math.max(0, Math.round(you.hp))}</span>`);
+    setHTML($('chips'), 'chips', ch.join(''));
+    const cap = w.caption;
+    $('caption').hidden = !cap;
+    if (cap) { setText($('capSay'), 'say', cap.text); setText($('capTip'), 'tip', cap.tip ? '提示：' + cap.tip : ''); }
+    const msg = w.msg && w.t - w.msg.t < 2.2 ? w.msg.text : '';
+    $('toast').hidden = !msg; setText($('toast'), 'toast', msg);
+    if (w.result && !shown && w.t - w.result.t >= 0) {
+      shown = true;
+      setTimeout(() => {
+        if (world !== w) return;
+        const r = w.result, t = $('resTitle');
+        t.textContent = r.ok ? '成功' : '失敗'; t.className = r.ok ? 'ok' : 'bad';
+        $('resText').textContent = r.text;
+        $('resPlay').textContent = mode === 'play' ? '再操作一次' : '實際操作';
+        $('resRetry').hidden = mode === 'play';
+        $('resDemo').textContent = mode === 'demo' ? '重看示範' : '看示範';
+        $('resRetry').textContent = '再試一次';
+        $('result').hidden = false;
+      }, 700);
+    }
+  }
+
+  if (!VIEW.init(stage)) return;
+  let saved = null; try { saved = localStorage.getItem('hc-sim-mech'); } catch (e) {}
+  choose(M.some(m => m.id === saved) ? saved : M[0].id, 'demo');
+
+  let last = performance.now(), acc = 0;
+  const STEP = 1 / 60;
+  function frame(now) {
+    const real = Math.min(0.1, (now - last) / 1000); last = now;
+    if (world && !paused) {
+      acc += real * speed;
+      let n = 0;
+      while (acc >= STEP && n < 12) { input.dir = mode === 'play' ? keyDir() : null; SIM.step(world, STEP, input); acc -= STEP; n++; }
+      if (n === 12) acc = 0;
+    }
+    VIEW.sync(world, paused ? 0 : real * speed);
+    hud();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
